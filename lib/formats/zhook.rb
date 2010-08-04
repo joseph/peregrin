@@ -3,6 +3,7 @@ class Peregrin::Zhook
   FILE_EXT = ".zhook"
   INDEX_PATH = "index.html"
   COVER_PATH = "cover.png"
+  BODY_XPATH = '/html/body'
 
   # Raises an exception if file at path is not a valid Zhook. Otherwise
   # returns true.
@@ -45,7 +46,7 @@ class Peregrin::Zhook
       }
     }
     doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
-    doc.css('head meta').each { |meta|
+    doc.css('html head meta[name]').each { |meta|
       name = meta['name']
       content = meta['content']
       if book.metadata[name]
@@ -62,9 +63,13 @@ class Peregrin::Zhook
   # Stitches together components of the internal book.
   #
   def initialize(book)
-    @book = book.clone
-    # TODO: stitch components together.
-    # TODO: build outline from component.
+    @book = book
+
+    if @book.components.length > 1
+      stitch_components(@book)
+    end
+
+    @book.contents = outline_book(index)
   end
 
 
@@ -77,8 +82,114 @@ class Peregrin::Zhook
   # Returns the internal book object.
   #
   def to_book(options = {})
-    @book
+    bk = Marshal.load(Marshal.dump(@book))
+
+    # XPath => URI mapping tools
+    cmpt_xpaths = []
+
+    # Componentizing.
+    if options[:componentize]
+      componentizer = Peregrin::Componentizer.new(index)
+      componentizer.process(index.root.at_css('body'))
+      bk.components = componentizer.component_xpaths.collect { |xpath|
+        cmpt_xpaths.push(xpath)
+        doc = componentizer.generate_component(xpath)
+        { uri_for_xpath(xpath, cmpt_xpaths) => htmlize(doc) }
+      }
+    else
+      cmpt_xpaths.push(BODY_XPATH)
+      bk.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
+    end
+
+    # Outlining.
+    bk.contents = outline_book(index, cmpt_xpaths)
+
+    bk
   end
+
+
+  protected
+
+    def index
+      @index_document ||= Nokogiri::HTML::Document.parse(
+        @book.components.first.values.first
+      )
+    end
+
+
+    def outline_book(doc, cmpt_xpaths = [BODY_XPATH])
+      unless defined?(@outliner) && @outliner
+        @outliner = Peregrin::Outliner.new(doc)
+        @outliner.process(doc.root)
+      end
+
+      curse = lambda { |sxn|
+        # Find the component parent
+        n = sxn.node || sxn.heading
+        while n && n.respond_to?(:parent)
+          break if cmptURI = uri_for_xpath(n.path, cmpt_xpaths)
+          n = n.parent
+        end
+
+        if cmptURI
+          # get URI for section
+          sid = sxn.heading['id'] if sxn.heading
+          sid ||= sxn.node['id'] if sxn.node
+          cmptURI += "#"+sid if sid && !sid.empty?
+
+          chapter = {
+            :title => sxn.heading_text,
+            :src => cmptURI
+          }
+
+          # identify any relevant child sections
+          children = sxn.sections.collect { |ch|
+            curse.call(ch) unless ch.empty?
+          }.compact
+
+          chapter[:children] = children if children.any?
+
+          chapter
+        else
+          nil
+        end
+      }
+
+      curse.call(@outliner.result_root)[:children]
+    end
+
+
+    def uri_for_xpath(xpath, cmpt_xpaths = [BODY_XPATH])
+      return nil  unless cmpt_xpaths.include?(xpath)
+      i = cmpt_xpaths.index(xpath)
+      (i == 0) ? "index.html" : "part#{"%03d" % i}.html"
+    end
+
+
+    def stitch_components(book)
+      node = Nokogiri::XML::Node.new('article', index)
+      bdy = index.at_xpath(BODY_XPATH)
+      bdy.children.each { |ch|
+        node.add_child(ch)
+      }
+      bdy.add_child(node)
+
+      book.components.shift
+      while cmpt = book.components.shift
+        str = cmpt.values.first
+        doc = Nokogiri::HTML::Document.parse(str)
+        art = doc.at_xpath(BODY_XPATH)
+        art.name = 'article'
+        bdy.add_child(art)
+      end
+      book.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
+    end
+
+
+
+    def htmlize(doc)
+      "<!DOCTYPE html>\n"+ doc.root.to_html
+    end
 
 
   class ValidationError < ::RuntimeError

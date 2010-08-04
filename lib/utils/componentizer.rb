@@ -26,7 +26,7 @@ class Peregrin::Componentizer
     raise "Not a component: #{xpath}"  unless @component_xpaths.include?(xpath)
 
     # Clean up the "shell" document.
-    @shell_document ||= @document.root.dup
+    @shell_document ||= @document.dup
     bdy = @shell_document.at_css('body')
     bdy.children.remove
 

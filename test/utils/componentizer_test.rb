@@ -36,6 +36,7 @@ class Peregrin::Tests::ComponentizerTest < Test::Unit::TestCase
     cz = process_fixture("components1.html")
     assert_equal(
       whitewash(
+        "<!DOCTYPE html>" +
         "<html><head><title>Components test 1</title></head><body>" +
         "<article><h2>B</h2></article>" +
         "</body></html>"
@@ -51,8 +52,10 @@ class Peregrin::Tests::ComponentizerTest < Test::Unit::TestCase
     cz.write_component("/html/body", tmp_path) { |doc| doc.to_xhtml }
     assert_equal(
       whitewash(
-        "<html xmlns=\"http://www.w3.org/1999/xhtml\">" +
-        "<head><title>Components test 1</title></head>" +
+        "<!DOCTYPE html>" +
+        "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head>" +
+        "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\" />" +
+        "<title>Components test 1</title></head>" +
         "<body><h1>A</h1></body></html>"
       ),
       whitewash(IO.read(tmp_path))
@@ -70,10 +73,6 @@ class Peregrin::Tests::ComponentizerTest < Test::Unit::TestCase
       cz = Peregrin::Componentizer.new(doc)
       cz.process(doc.at_xpath('/html/body'))
       cz
-    end
-
-    def whitewash(str)
-      str.gsub(/\s+/,'')
     end
 
 end
