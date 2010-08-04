@@ -1,5 +1,12 @@
 class Peregrin::Epub
 
+  NAMESPACES = {
+    :ocf => { 'ocf' => 'urn:oasis:names:tc:opendocument:xmlns:container' },
+    :opf => { 'opf' => 'http://www.idpf.org/2007/opf' },
+    :dc => { 'dc' => 'http://purl.org/dc/elements/1.1/' },
+    :ncx => { 'ncx' => 'http://www.daisy.org/z3986/2005/ncx/' }
+  }
+  OCF_PATH = "META-INF/container.xml"
   HTML5_TAGNAMES = %w[section nav article aside hgroup header footer figure figcaption] # FIXME: Which to divify? Which to leave as-is?
   MIMETYPE_MAP = {
     '.gif' => 'image/gif',
@@ -16,15 +23,40 @@ class Peregrin::Epub
   NCX = 'content'
   OPF = 'content'
 
-
   attr_writer :mime_lookup
 
 
   def self.validate(path)
+    raise FileNotFound.new(path)  unless File.file?(path)
+    begin
+      zf = Zip::ZipFile.open(path)
+    rescue
+      raise NotAZipArchive.new(path)
+    end
+
+    begin
+      load_config_documents(zf)
+    rescue => e
+      raise e.class.new(path)
+    end
+  ensure
+    zf.close  if zf
   end
 
 
   def self.read(path)
+    book = Peregrin::Book.new
+    Zip::ZipFile.open(path) { |zipfile|
+      docs = load_config_documents(zipfile)
+      book.metadata = extract_metadata(docs[:opf])
+      book.components, book.media = extract_components(
+        zipfile,
+        docs[:opf],
+        docs[:opf_path]
+      )
+      book.contents = extract_chapters(zipfile, docs[:ncx])
+    }
+    new(book)
   end
 
 
@@ -36,7 +68,7 @@ class Peregrin::Epub
   def write(path)
     with_working_dir(path) {
       manifest_items = []
-      build_oebps_container
+      build_ocf
       manifest_items += build_ncx
       manifest_items += write_components
       build_opf(manifest_items)
@@ -51,6 +83,98 @@ class Peregrin::Epub
 
 
   protected
+
+    def self.load_config_documents(zipfile)
+      # The OCF file.
+      begin
+        docs = { :ocf => Nokogiri::XML::Document.parse(zipfile.read(OCF_PATH)) }
+      rescue
+        raise FailureLoadingOCF
+      end
+
+      # The OPF file.
+      begin
+        docs[:opf_path] = docs[:ocf].at_xpath(
+          '//ocf:rootfile[@media-type="application/oebps-package+xml"]',
+          NAMESPACES[:ocf]
+        )['full-path']
+        docs[:opf] = Nokogiri::XML::Document.parse(zipfile.read(docs[:opf_path]))
+      rescue
+        raise FailureLoadingOPF
+      end
+
+      # The NCX file.
+      begin
+        spine = docs[:opf].at_xpath('//opf:spine', NAMESPACES[:opf])
+        ncx_id = spine['toc'] ? spine['toc'] : 'ncx'
+        item = docs[:opf].at_xpath(
+          "//opf:manifest/opf:item[@id='#{ncx_id}']",
+          NAMESPACES[:opf]
+        )
+        docs[:ncx_path] = File.join(File.dirname(docs[:opf_path]), item['href'])
+        docs[:ncx] = Nokogiri::XML::Document.parse(zipfile.read(docs[:ncx_path]))
+      rescue
+        raise FailureLoadingNCX
+      end
+
+      docs
+    end
+
+
+    def self.extract_metadata(opf_doc)
+      opf_doc.at_xpath(
+        '//opf:metadata',
+        NAMESPACES[:opf]
+      ).children.select { |ch|
+        ch.element?
+      }.inject({}) { |acc, elem|
+        if elem.name == "meta"
+          name = elem['name']
+          content = elem['content']
+        else
+          name = elem.name
+          content = elem.content
+        end
+
+        acc[name] = (acc[name] ? "#{acc[name]}\n#{content}" : content)
+        acc
+      }
+    end
+
+
+    def self.extract_components(zipfile, opf_doc, opf_path)
+      content_root = File.dirname(opf_path)
+      ids = {}
+      components = []
+      media = []
+      manifest = opf_doc.at_xpath('//opf:manifest', NAMESPACES[:opf])
+      spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
+
+      spine.search('//opf:itemref', NAMESPACES[:opf]).each { |iref|
+        next  if iref['linear'] == 'no'
+        id = iref['idref']
+        item = manifest.at_xpath("//opf:item[@id='#{id}']", NAMESPACES[:opf])
+        href = item['href']
+        cmpt_path = (content_root == '.' ? href : File.join(content_root, href))
+        components.push(href => zipfile.read(cmpt_path))
+        ids.update(id => href)
+      }
+
+      manifest.search('//opf:item', NAMESPACES[:opf]).each { |item|
+        id = item['id']
+        next  if ids.keys.include?(id)
+        href = item['href']
+        ids.update(id => href)
+        media.push(href)
+      }
+      [components, media]
+    end
+
+
+    def self.extract_chapters(zipfile, ncx_doc)
+      # TODO
+    end
+
 
     def with_working_dir(path)
       raise ArgumentError  unless block_given?
@@ -71,12 +195,9 @@ class Peregrin::Epub
     end
 
 
-    def build_oebps_container
-      build_xml_file(working_dir("META-INF", "container.xml")) { |xml|
-        xml.container(
-          :xmlns => "urn:oasis:names:tc:opendocument:xmlns:container",
-          :version => "1.0"
-        ) {
+    def build_ocf
+      build_xml_file(working_dir(OCF_PATH)) { |xml|
+        xml.container(:xmlns => NAMESPACES[:ocf]["ocf"], :version => "1.0") {
           xml.rootfiles {
             xml.rootfile(
               "full-path" => "OEBPS/#{OPF}.opf",
@@ -90,10 +211,7 @@ class Peregrin::Epub
 
     def build_ncx
       p = build_xml_file(working_dir(OEBPS, "#{NCX}.ncx")) { |xml|
-        xml.ncx(
-          'xmlns' => "http://www.daisy.org/z3986/2005/ncx/",
-          :version => "2005-1"
-        ) {
+        xml.ncx('xmlns' => NAMESPACES[:ncx]["ncx"], :version => "2005-1") {
           xml.head {
             xml.meta(:name => "dtb:uid", :content => unique_identifier)
             xml.meta(:name => "dtb:depth", :content => heading_depth)
@@ -303,13 +421,13 @@ class Peregrin::Epub
 
     def heading_depth
       max = 0
-      cntr = 0
+      curr = 0
       curse = lambda { |children|
         children.each { |ch|
-          cntr += 1
-          max = [cntr, max].max
+          curr += 1
+          max = [curr, max].max
           curse.call(ch[:children])  if ch[:children]
-          cntr -= 1
+          curr -= 1
         }
       }
       curse.call(@book.contents)
@@ -351,5 +469,20 @@ class Peregrin::Epub
       root.remove_attribute('xmlns')#, "http://www.w3.org/1999/xhtml")
       root.to_xhtml(:indent => 2)
     end
+
+
+  class ValidationError < ::RuntimeError
+
+    def initialize(path = nil)
+      @path = path
+    end
+
+  end
+
+  class FileNotFound < ValidationError; end
+  class NotAZipArchive < ValidationError; end
+  class FailureLoadingOCF < ValidationError; end
+  class FailureLoadingOPF < ValidationError; end
+  class FailureLoadingNCX < ValidationError; end
 
 end

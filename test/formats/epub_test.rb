@@ -26,6 +26,34 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
   end
 
 
+  def test_epub_validation
+    assert_nothing_raised {
+      Peregrin::Epub.validate("test/fixtures/epubs/strunk.epub")
+    }
+  end
+
+
+  def test_extracting_metadata
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    metadata = epub.to_book.metadata
+    assert_equal("The Elements of Style", metadata['title'])
+  end
+
+
+  def test_extracting_components
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    book = epub.to_book
+    assert_equal(
+      ["cover.xml", "title.xml", "about.xml", "main0.xml", "main1.xml", "main2.xml", "main3.xml", "main4.xml", "main5.xml", "main6.xml", "main7.xml", "main8.xml", "main9.xml", "main10.xml", "main11.xml", "main12.xml", "main13.xml", "main14.xml", "main15.xml", "main16.xml", "main17.xml", "main18.xml", "main19.xml", "main20.xml", "main21.xml", "similar.xml", "feedbooks.xml"],
+      book.components.collect { |cmpt| cmpt.keys.first }
+    )
+    assert_equal(
+      ["css/page.css", "css/feedbooks.css", "css/title.css", "css/about.css", "css/main.css", "images/logo-feedbooks-tiny.png", "images/logo-feedbooks.png", "images/cover.png", "fb.ncx"],
+      book.media
+    )
+  end
+
+
   protected
 
     def strunk_book
