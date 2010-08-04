@@ -69,6 +69,8 @@ class Peregrin::Zhook
       stitch_components(@book)
     end
 
+    consolidate_metadata(@book)
+
     @book.contents = outline_book(index)
   end
 
@@ -114,6 +116,50 @@ class Peregrin::Zhook
       @index_document ||= Nokogiri::HTML::Document.parse(
         @book.components.first.values.first
       )
+    end
+
+
+    # Takes a book with multiple components and joins them together,
+    # by creating article elements from every body element and appending them
+    # to the body of the first component.
+    def stitch_components(book)
+      node = Nokogiri::XML::Node.new('article', index)
+      bdy = index.at_xpath(BODY_XPATH)
+      bdy.children.each { |ch|
+        node.add_child(ch)
+      }
+      bdy.add_child(node)
+
+      book.components.shift
+      while cmpt = book.components.shift
+        str = cmpt.values.first
+        doc = Nokogiri::HTML::Document.parse(str)
+        art = doc.at_xpath(BODY_XPATH)
+        art.name = 'article'
+        bdy.add_child(art)
+
+        # TODO: what other elements from the head should we import?
+        # - link tags?
+        # - meta tags?
+      end
+      book.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
+    end
+
+
+    # Takes the metadata out of the book and ensures that there are matching
+    # meta tags in the index document.
+    #
+    def consolidate_metadata(book)
+      head = index.at_xpath('/html/head')
+      head.css('meta[name]').each { |meta| meta.remove }
+      book.metadata.each_pair { |name, content|
+        content.split(/\n/).each { |val|
+          meta = Nokogiri::XML::Node.new('meta', index)
+          meta['name'] = name
+          meta['content'] = val
+          head.add_child(meta)
+        }
+      }
     end
 
 
@@ -164,27 +210,6 @@ class Peregrin::Zhook
       i = cmpt_xpaths.index(xpath)
       (i == 0) ? "index.html" : "part#{"%03d" % i}.html"
     end
-
-
-    def stitch_components(book)
-      node = Nokogiri::XML::Node.new('article', index)
-      bdy = index.at_xpath(BODY_XPATH)
-      bdy.children.each { |ch|
-        node.add_child(ch)
-      }
-      bdy.add_child(node)
-
-      book.components.shift
-      while cmpt = book.components.shift
-        str = cmpt.values.first
-        doc = Nokogiri::HTML::Document.parse(str)
-        art = doc.at_xpath(BODY_XPATH)
-        art.name = 'article'
-        bdy.add_child(art)
-      end
-      book.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
-    end
-
 
 
     def htmlize(doc)

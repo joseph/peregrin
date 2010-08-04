@@ -83,7 +83,7 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
         ` },
       { "foo.html" => %Q`
         <html><head><title>Foo</title></head><body>
-        <hgroup><h1>Part Foo</h1><h2>Inventive Labs</h2></hgroup>
+        <hgroup><h1>Part Foo</h1><h2>Peregrin Took</h2></hgroup>
         <cite>A cite tag</cite></body></html>
         ` },
       { "garply.html" => %Q`<p>A floating para.</p>` }
@@ -98,7 +98,7 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
           <p>A para</p>
         </article>
         <article>
-          <hgroup><h1>Part Foo</h1><h2>Inventive Labs</h2></hgroup>
+          <hgroup><h1>Part Foo</h1><h2>Peregrin Took</h2></hgroup>
           <cite>A cite tag</cite>
         </article>
         <article>
@@ -106,6 +106,30 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
         </article>
         </body></html>`
       ),
+      whitewash(ook.to_book.components.first.values.first)
+    )
+  end
+
+
+  def test_consolidating_metadata
+    book = Peregrin::Book.new
+    book.components = [{
+      "index.html" =>
+        "<html><head><title>Foo</title></head><body><p>Foo</p></body></html>"
+    }]
+    book.metadata = {
+      "title" => "Foo",
+      "creator" => "Peregrin Took"
+    }
+    ook = Peregrin::Zhook.new(book)
+    assert_equal(
+      whitewash(%Q`
+        <!DOCTYPE html>
+        <html><head><title>Foo</title>
+        <meta name="title" content="Foo">
+        <meta name="creator" content="Peregrin Took">
+        </head><body><p>Foo</p></body></html>
+      `),
       whitewash(ook.to_book.components.first.values.first)
     )
   end
