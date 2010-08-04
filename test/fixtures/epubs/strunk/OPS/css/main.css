@@ -1,0 +1,81 @@
+@import "page.css";
+body {padding: 0;}
+
+p {
+  margin-top: 0;
+  margin-bottom: 0;
+  text-indent: 1.0em;
+  text-align: justify;}
+  
+body > p:first-child {text-indent: 0}
+div.text p:first-child {text-indent: 0}
+p.dropcap, p.noindent {text-indent: 0em;}
+
+blockquote p, li p {
+  text-indent: 0.0em;
+  text-align: left;}
+
+a {color: #000000;
+   text-decoration: none;}
+
+h2 {
+  padding-top:0;
+  display:block;}
+
+.chapterHeader {
+  height:60px;
+  border:1px solid #000;
+  display:block;
+  margin-bottom:20px;
+  background-color:#FFF;}
+  
+.chapterHeader .translation {
+  float:left;
+  font-weight: normal;
+  margin-top:38px;
+  margin-left: -8px;
+  margin-bottom: 0px;
+  padding-right: 16px;
+  padding-left: 5px ;
+  padding-bottom: 0px;
+  padding-top: 0px;
+  font-size:26px;
+  background-color:#FFF;}
+                             
+.chapterHeader .count {
+  line-height: 100%;
+  font-style:normal;
+  font-weight: normal;
+  text-transform:uppercase;
+  font-size:94px;
+  margin-right:18px;
+  margin-top:-14px;
+  margin-bottom: -20px;
+  float:left;
+  padding:0px;
+  background-color:#FFF;}
+  
+div.body {}
+
+div.book {
+  padding-top: 6.0em;
+  page-break-before: right;}
+  
+div.chapter {padding-top: 2.0em;}
+div.part {padding-top: 2.0em;}
+h3.section_title {text-align: center;}
+div.verse {padding: 1.0em;}
+
+div.verseline {
+  font-style: italic;
+  margin-left: 1.0em;
+  text-indent: -1.0em;}
+  
+span.dropcap {
+  font-size: 300%; 
+  font-weight: bold; 
+  float: left; 
+  margin: -0.1em 0.125em -0.2em 0em; 
+  text-indent: 0em; 
+  line-height: 1em; 
+  height: 1em;}

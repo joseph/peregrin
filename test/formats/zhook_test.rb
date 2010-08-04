@@ -2,7 +2,6 @@ require 'test/helper'
 
 class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
 
-
   def test_validates
     # File does not exist
     assert_raise(Peregrin::Zhook::FileNotFound) {

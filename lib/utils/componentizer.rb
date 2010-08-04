@@ -27,7 +27,7 @@ class Peregrin::Componentizer
 
     # Clean up the "shell" document.
     @shell_document ||= @document.dup
-    bdy = @shell_document.at_css('body')
+    bdy = @shell_document.at_xpath('/html/body')
     bdy.children.remove
 
     # Find the node we're going to copy into the shell document.

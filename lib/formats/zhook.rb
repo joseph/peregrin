@@ -84,7 +84,7 @@ class Peregrin::Zhook
   # Returns the internal book object.
   #
   def to_book(options = {})
-    bk = Marshal.load(Marshal.dump(@book))
+    bk = @book.deep_clone
 
     # XPath => URI mapping tools
     cmpt_xpaths = []
@@ -98,6 +98,8 @@ class Peregrin::Zhook
         doc = componentizer.generate_component(xpath)
         { uri_for_xpath(xpath, cmpt_xpaths) => htmlize(doc) }
       }
+
+      # TODO: add rel links..
     else
       cmpt_xpaths.push(BODY_XPATH)
       bk.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
@@ -105,6 +107,8 @@ class Peregrin::Zhook
 
     # Outlining.
     bk.contents = outline_book(index, cmpt_xpaths)
+
+    # TODO: list of illustrations?
 
     bk
   end

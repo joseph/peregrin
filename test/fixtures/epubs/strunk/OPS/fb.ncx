@@ -1,0 +1,631 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE ncx PUBLIC
+     "-//NISO//DTD ncx 2005-1//EN"
+     "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">
+
+<ncx version="2005-1"
+     xml:lang="en"
+     xmlns="http://www.daisy.org/z3986/2005/ncx/">
+
+  <head>
+    <!-- The following four metadata items are required for all
+        NCX documents, including those conforming to the relaxed
+        constraints of OPS 2.0 -->
+
+    <meta name="dtb:uid" content="6f82990c-9394-11df-920d-001cc0a62c0b"/>
+
+    <meta name="dtb:depth" content="2"/>
+
+    <meta name="dtb:totalPageCount" content="0"/>
+
+    <meta name="dtb:maxPageNumber" content="0"/>
+  </head>
+
+ <docTitle>
+   <text>The Elements of Style</text>
+ </docTitle>
+
+ <docAuthor>
+   
+     <text>Strunk Jr., William</text>
+   
+ </docAuthor>
+
+  
+
+
+
+  <navMap>
+    
+    <navPoint class="titlepage" id="level1-titlepage" playOrder="1">
+      <navLabel><text>Title</text></navLabel>
+      <content src="title.xml"/>
+    </navPoint>
+    
+    
+    
+    
+    <navPoint class="about" id="level1-about" playOrder="2">
+      <navLabel><text>About</text></navLabel>
+      <content src="about.xml"/>
+    </navPoint>
+    
+    
+    
+    
+    
+    
+    
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98341" playOrder="3">
+  <navLabel><text>Chapter 1 - Introductory</text></navLabel> 
+  <content src="main0.xml"/>
+    
+  
+    
+    
+  
+</navPoint>
+        
+        
+       
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98343" playOrder="4">
+  <navLabel><text>Chapter 2 - Elementary Rules of Usage</text></navLabel> 
+  <content src="main1.xml"/>
+    
+  
+    
+    
+      
+
+
+  
+
+
+
+
+<navPoint class="section" id="sec98344" playOrder="5">
+  <navLabel><text>1. Form the possessive singular of nouns with 's.</text></navLabel>
+  
+    <content src="main1.xml#section_98344"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98346" playOrder="6">
+  <navLabel><text>2. In a series of three or more terms with a single conjunction, use a comma after each term except the last.</text></navLabel>
+  
+    <content src="main2.xml#section_98346"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98348" playOrder="7">
+  <navLabel><text>3. Enclose parenthetic expressions between commas.</text></navLabel>
+  
+    <content src="main3.xml#section_98348"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98350" playOrder="8">
+  <navLabel><text>4. Place a comma before and or but introducing an independent clause.</text></navLabel>
+  
+    <content src="main4.xml#section_98350"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98352" playOrder="9">
+  <navLabel><text>5. Do not join independent clauses by a comma.</text></navLabel>
+  
+    <content src="main5.xml#section_98352"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98354" playOrder="10">
+  <navLabel><text>6. Do not break sentences in two.</text></navLabel>
+  
+    <content src="main6.xml#section_98354"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98356" playOrder="11">
+  <navLabel><text>7. A participial phrase at the beginning of a sentence must refer to the grammatical subject.</text></navLabel>
+  
+    <content src="main7.xml#section_98356"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98358" playOrder="12">
+  <navLabel><text>8. Divide words at line-ends, in accordance with their formation and pronunciation.</text></navLabel>
+  
+    <content src="main8.xml#section_98358"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+</navPoint>
+        
+        
+       
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98360" playOrder="13">
+  <navLabel><text>Chapter 3 - Elementary Principles of Composition</text></navLabel> 
+  <content src="main9.xml"/>
+    
+  
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98361" playOrder="14">
+  <navLabel><text>1. Make the paragraph the unit of composition: one paragraph to each topic.</text></navLabel>
+  
+    <content src="main9.xml#section_98361"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98363" playOrder="15">
+  <navLabel><text>2. As a rule, begin each paragraph with a topic sentence; end it in conformity with the beginning.</text></navLabel>
+  
+    <content src="main10.xml#section_98363"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98365" playOrder="16">
+  <navLabel><text>3. Use the active voice.</text></navLabel>
+  
+    <content src="main11.xml#section_98365"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98367" playOrder="17">
+  <navLabel><text>4. Put statements in positive form.</text></navLabel>
+  
+    <content src="main12.xml#section_98367"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98369" playOrder="18">
+  <navLabel><text>5. Omit needless words.</text></navLabel>
+  
+    <content src="main13.xml#section_98369"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98371" playOrder="19">
+  <navLabel><text>6. Avoid a succession of loose sentences.</text></navLabel>
+  
+    <content src="main14.xml#section_98371"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98373" playOrder="20">
+  <navLabel><text>7. Express co-ordinate ideas in similar form.</text></navLabel>
+  
+    <content src="main15.xml#section_98373"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98375" playOrder="21">
+  <navLabel><text>8. Keep related words together.</text></navLabel>
+  
+    <content src="main16.xml#section_98375"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98377" playOrder="22">
+  <navLabel><text>9. In summaries, keep to one tense.</text></navLabel>
+  
+    <content src="main17.xml#section_98377"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+    
+      
+    
+    
+      
+
+
+
+
+
+<navPoint class="section" id="sec98379" playOrder="23">
+  <navLabel><text>10. Place the emphatic words of a sentence at the end.</text></navLabel>
+  
+    <content src="main18.xml#section_98379"/>
+  
+    
+    
+    
+  
+</navPoint>
+
+    
+  
+</navPoint>
+        
+        
+       
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98381" playOrder="24">
+  <navLabel><text>Chapter 4 - A Few Matters of Form</text></navLabel> 
+  <content src="main19.xml"/>
+    
+  
+    
+    
+  
+</navPoint>
+        
+        
+       
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98383" playOrder="25">
+  <navLabel><text>Chapter 5 - Words and Expressions Commonly Misused</text></navLabel> 
+  <content src="main20.xml"/>
+    
+  
+    
+    
+  
+</navPoint>
+        
+        
+       
+    
+      
+        
+        
+
+
+
+
+
+
+  
+
+
+<navPoint class="chapter" id="chap98385" playOrder="26">
+  <navLabel><text>Chapter 6 - Words Commonly Misspelled</text></navLabel> 
+  <content src="main21.xml"/>
+    
+  
+    
+    
+  
+</navPoint>
+        
+        
+       
+    
+    
+    
+      
+    
+      <navPoint class="similar" id="level1-similar" playOrder="27">
+        <navLabel><text>Recommendations</text></navLabel>
+        <content src="similar.xml"/>
+      </navPoint>
+    
+    
+    
+    
+  </navMap>
+
+</ncx>

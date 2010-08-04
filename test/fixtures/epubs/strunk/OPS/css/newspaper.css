@@ -1,0 +1,20 @@
+@import "page.css";
+body {padding: 0;}
+
+h2 {
+  padding-top:0;
+  display:block;}
+
+h1 {text-align: center;}
+h2 {}
+h3 {}
+
+p {
+  margin-top: 0.0em;
+  margin-bottom: 0.0em;
+  text-indent: 1.0em;}
+
+h2 + p {text-indent: 0.0em;}
+h3 + p {text-indent: 0.0em;}
+div.item {page-break-after: always;}
+a {color: #000000;}
