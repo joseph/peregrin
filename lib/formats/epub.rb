@@ -35,7 +35,9 @@ class Peregrin::Epub
     end
 
     begin
-      load_config_documents(zf)
+      book = Peregrin::Book.new
+      epub = new(book)
+      epub.send(:load_config_documents, zf)
     rescue => e
       raise e.class.new(path)
     end
@@ -46,22 +48,13 @@ class Peregrin::Epub
 
   def self.read(path)
     book = Peregrin::Book.new
-    Zip::ZipFile.open(path) { |zipfile|
-      docs = load_config_documents(zipfile)
-      book.metadata = extract_metadata(docs[:opf])
-      book.components, book.media = extract_components(
-        zipfile,
-        docs[:opf],
-        docs[:opf_path]
-      )
-      book.contents = extract_chapters(zipfile, docs[:ncx])
-    }
-    new(book)
+    new(book, path)
   end
 
 
-  def initialize(book)
+  def initialize(book, epub_path = nil)
     @book = book
+    load_from_path(epub_path)  if epub_path
   end
 
 
@@ -84,7 +77,28 @@ class Peregrin::Epub
 
   protected
 
-    def self.load_config_documents(zipfile)
+    def load_from_path(epub_path)
+      docs = nil
+      Zip::ZipFile.open(epub_path) { |zipfile|
+        docs = load_config_documents(zipfile)
+        @book.metadata = extract_metadata(docs[:opf])
+        @book.components, @book.media = extract_components(
+          zipfile,
+          docs[:opf],
+          docs[:opf_path]
+        )
+        @book.contents = extract_chapters(zipfile, docs[:ncx])
+      }
+      @book.media_copy_proc = lambda { |media_path, dest_path|
+        media_path = File.join(File.dirname(docs[:opf_path]), media_path)
+        Zip::ZipFile.open(epub_path) { |zipfile|
+          zipfile.extract(media_path, dest_path)
+        }
+      }
+    end
+
+
+    def load_config_documents(zipfile)
       # The OCF file.
       begin
         docs = { :ocf => Nokogiri::XML::Document.parse(zipfile.read(OCF_PATH)) }
@@ -121,7 +135,7 @@ class Peregrin::Epub
     end
 
 
-    def self.extract_metadata(opf_doc)
+    def extract_metadata(opf_doc)
       opf_doc.at_xpath(
         '//opf:metadata',
         NAMESPACES[:opf]
@@ -142,7 +156,7 @@ class Peregrin::Epub
     end
 
 
-    def self.extract_components(zipfile, opf_doc, opf_path)
+    def extract_components(zipfile, opf_doc, opf_path)
       content_root = File.dirname(opf_path)
       ids = {}
       components = []
@@ -162,6 +176,7 @@ class Peregrin::Epub
 
       manifest.search('//opf:item', NAMESPACES[:opf]).each { |item|
         id = item['id']
+        next  if item['media-type'] == MIMETYPE_MAP['.ncx']
         next  if ids.keys.include?(id)
         href = item['href']
         ids.update(id => href)
@@ -171,8 +186,25 @@ class Peregrin::Epub
     end
 
 
-    def self.extract_chapters(zipfile, ncx_doc)
-      # TODO
+    def extract_chapters(zipfile, ncx_doc)
+      contents = []
+      curse = lambda { |point|
+        ch = {
+          :title => point.at_xpath('.//ncx:text', NAMESPACES[:ncx]).content,
+          :src => point.at_xpath('.//ncx:content', NAMESPACES[:ncx])['src']
+        }
+        point.children.each { |pt|
+          next  unless pt.element? && pt.name == "navPoint"
+          ch[:children] ||= []
+          ch[:children].push(curse.call(pt))
+        }
+        ch
+      }
+      ncx_doc.at_xpath("//ncx:navMap", NAMESPACES[:ncx]).children.each { |pt|
+        next  unless pt.element? && pt.name == "navPoint"
+        contents.push(curse.call(pt))
+      }
+      contents
     end
 
 
@@ -182,6 +214,7 @@ class Peregrin::Epub
         File.dirname(path),
         File.basename(path, File.extname(path))
       )
+      FileUtils.rm_rf(@working_dir)
       FileUtils.mkdir_p(@working_dir)
       yield
     ensure
@@ -258,7 +291,7 @@ class Peregrin::Epub
       @book.media.each { |media_path|
         id = "#{File.dirname(media_path)}-" +
           "#{File.basename(media_path, File.extname(media_path))}".gsub(
-            /[^A-Za-z]+/,
+            /[^\w]+/,
             '-'
           )
         dest_path = working_dir(OEBPS, media_path)

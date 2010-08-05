@@ -48,9 +48,23 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
       book.components.collect { |cmpt| cmpt.keys.first }
     )
     assert_equal(
-      ["css/page.css", "css/feedbooks.css", "css/title.css", "css/about.css", "css/main.css", "images/logo-feedbooks-tiny.png", "images/logo-feedbooks.png", "images/cover.png", "fb.ncx"],
+      ["css/page.css", "css/feedbooks.css", "css/title.css", "css/about.css", "css/main.css", "images/logo-feedbooks-tiny.png", "images/logo-feedbooks.png", "images/cover.png"],
       book.media
     )
+  end
+
+
+  def test_extracting_contents
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(2, epub.send(:heading_depth))
+  end
+
+
+  def test_read_epub_to_write_epub
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    epub.mime_lookup = { Regexp.new("^.*\.xml$") => "application/xhtml+xml" }
+    epub.write("test/fixtures/epubs/tmp/strunk_test2.epub")
+    assert(File.exists?('test/fixtures/epubs/tmp/strunk_test2.epub'))
   end
 
 
