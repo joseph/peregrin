@@ -23,8 +23,6 @@ class Peregrin::Epub
   NCX = 'content'
   OPF = 'content'
 
-  attr_writer :mime_lookup
-
 
   def self.validate(path)
     raise FileNotFound.new(path)  unless File.file?(path)
@@ -53,18 +51,23 @@ class Peregrin::Epub
 
 
   def initialize(book, epub_path = nil)
+    @component_lookup = []
+    @metadata_lookup = []
     @book = book
-    load_from_path(epub_path)  if epub_path
+    if epub_path
+      load_from_path(epub_path)
+    else
+      process_book
+    end
   end
 
 
   def write(path)
     with_working_dir(path) {
-      manifest_items = []
       build_ocf
-      manifest_items += build_ncx
-      manifest_items += write_components
-      build_opf(manifest_items)
+      build_ncx
+      write_components
+      build_opf
       zip_it_up(File.basename(path))
     }
   end
@@ -77,17 +80,47 @@ class Peregrin::Epub
 
   protected
 
+    def process_book
+      @book.components.each { |cmpt|
+        href = cmpt.keys.first
+        register_component(href, nil, nil, 'yes')
+      }
+
+      @book.media.each { |href|
+        register_component(href)
+      }
+
+      # TODO: generate ToC, cover, LoI?
+    end
+
+
+
+    def register_component(href, id = nil, mimetype = nil, linear = nil)
+      cmpt = {
+        :href => href,
+        :id => id,
+        :mimetype => mimetype,
+        :linear => linear
+      }
+      cmpt[:id] ||= href.gsub(/[^\w]+/, '-').gsub(/^-+/, '')
+      cmpt[:mimetype] ||= MIMETYPE_MAP[File.extname(href)]
+      cmpt[:mimetype] ||= "application/unknown"
+      @component_lookup << cmpt
+      cmpt
+    end
+
+
+    #---------------------------------------------------------------------------
+    # READING
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
     def load_from_path(epub_path)
       docs = nil
       Zip::ZipFile.open(epub_path) { |zipfile|
         docs = load_config_documents(zipfile)
-        @book.metadata = extract_metadata(docs[:opf])
-        @book.components, @book.media = extract_components(
-          zipfile,
-          docs[:opf],
-          docs[:opf_path]
-        )
-        @book.contents = extract_chapters(zipfile, docs[:ncx])
+        extract_metadata(docs[:opf])
+        extract_components(zipfile, docs[:opf], docs[:opf_path])
+        extract_chapters(zipfile, docs[:ncx])
       }
       @book.media_copy_proc = lambda { |media_path, dest_path|
         media_path = File.join(File.dirname(docs[:opf_path]), media_path)
@@ -136,7 +169,7 @@ class Peregrin::Epub
 
 
     def extract_metadata(opf_doc)
-      opf_doc.at_xpath(
+      @book.metadata = opf_doc.at_xpath(
         '//opf:metadata',
         NAMESPACES[:opf]
       ).children.select { |ch|
@@ -157,37 +190,34 @@ class Peregrin::Epub
 
 
     def extract_components(zipfile, opf_doc, opf_path)
-      content_root = File.dirname(opf_path)
+      opf_root = File.dirname(opf_path)
       ids = {}
-      components = []
-      media = []
       manifest = opf_doc.at_xpath('//opf:manifest', NAMESPACES[:opf])
       spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
 
       spine.search('//opf:itemref', NAMESPACES[:opf]).each { |iref|
-        next  if iref['linear'] == 'no'
         id = iref['idref']
         item = manifest.at_xpath("//opf:item[@id='#{id}']", NAMESPACES[:opf])
         href = item['href']
-        cmpt_path = (content_root == '.' ? href : File.join(content_root, href))
-        components.push(href => zipfile.read(cmpt_path))
-        ids.update(id => href)
+        register_component(href, id, item['media-type'], iref['linear'])
+        if iref['linear'] != 'no'
+          cmpt_path = (opf_root == '.' ? href : File.join(opf_root, href))
+          @book.components.push(href => zipfile.read(cmpt_path))
+        end
       }
 
       manifest.search('//opf:item', NAMESPACES[:opf]).each { |item|
         id = item['id']
         next  if item['media-type'] == MIMETYPE_MAP['.ncx']
-        next  if ids.keys.include?(id)
+        next  if @component_lookup.any? { |cmpt| cmpt[:id] == id }
         href = item['href']
-        ids.update(id => href)
-        media.push(href)
+        register_component(href, id, item['media-type'])
+        @book.media.push(href)
       }
-      [components, media]
     end
 
 
     def extract_chapters(zipfile, ncx_doc)
-      contents = []
       curse = lambda { |point|
         ch = {
           :title => point.at_xpath('.//ncx:text', NAMESPACES[:ncx]).content,
@@ -202,11 +232,14 @@ class Peregrin::Epub
       }
       ncx_doc.at_xpath("//ncx:navMap", NAMESPACES[:ncx]).children.each { |pt|
         next  unless pt.element? && pt.name == "navPoint"
-        contents.push(curse.call(pt))
+        @book.contents.push(curse.call(pt))
       }
-      contents
     end
 
+
+    #---------------------------------------------------------------------------
+    # WRITING
+    #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
     def with_working_dir(path)
       raise ArgumentError  unless block_given?
@@ -243,7 +276,7 @@ class Peregrin::Epub
 
 
     def build_ncx
-      p = build_xml_file(working_dir(OEBPS, "#{NCX}.ncx")) { |xml|
+      ncx_path = build_xml_file(working_dir(OEBPS, "#{NCX}.ncx")) { |xml|
         xml.ncx('xmlns' => NAMESPACES[:ncx]["ncx"], :version => "2005-1") {
           xml.head {
             xml.meta(:name => "dtb:uid", :content => unique_identifier)
@@ -269,13 +302,11 @@ class Peregrin::Epub
           }
         }
       }
-      [manifest_item(NCX, p)]
+      register_component(ncx_path, NCX)
     end
 
 
     def write_components
-      manifest_items = []
-
       # Linear components.
       @book.components.each { |cmpt|
         cmpt.each_pair { |path, str|
@@ -283,7 +314,6 @@ class Peregrin::Epub
           html = root_to_xhtml(doc.root)
           File.open(working_dir(OEBPS, path), 'w') { |f| f.write(html) }
           id = File.basename(path, File.extname(path))
-          manifest_items << manifest_item(id, path, 'yes')
         }
       }
 
@@ -297,11 +327,10 @@ class Peregrin::Epub
         dest_path = working_dir(OEBPS, media_path)
         FileUtils.mkdir_p(File.dirname(dest_path))
         @book.copy_media_to(media_path, dest_path)
-        manifest_items << manifest_item(id, dest_path)
       }
 
       # Table of Contents
-      unless manifest_items.detect { |it| it[:id] == "toc" }
+      unless @component_lookup.detect { |it| it[:id] == "toc" }
         path = build_html_file(working_dir(OEBPS, "toc.html")) { |html|
           curse = lambda { |children|
             html.ol {
@@ -315,25 +344,23 @@ class Peregrin::Epub
           }
           curse.call(@book.contents)
         }
-        manifest_items << manifest_item("toc", path, "no")
+        register_component(path, "toc", nil, "no")
       end
 
       # Cover page
-      unless manifest_items.detect { |it| it[:id] == "cover" }
+      unless @component_lookup.detect { |it| it[:id] == "cover" }
         path = build_html_file(working_dir(OEBPS, "cover.html")) { |html|
           html.div(:id => "cover") {
             # TODO: get filename of cover image...
             html.img(:src => "cover.png", :alt => @book.metadata["title"])
           }
         }
-        manifest_items << manifest_item("cover", path, 'no')
+        register_component(path, "cover", nil, "no")
       end
-
-      manifest_items
     end
 
 
-    def build_opf(manifest_items)
+    def build_opf
       build_xml_file(working_dir(OEBPS, "#{OPF}.opf")) { |xml|
         xml.package(
           'xmlns' => "http://www.idpf.org/2007/opf",
@@ -363,35 +390,35 @@ class Peregrin::Epub
             xml.meta(:name => "cover", :content => "cover")
           }
           xml.manifest {
-            manifest_items.each { |item|
+            @component_lookup.each { |item|
               xml.item(
                 'id' => item[:id],
-                'href' => item[:path],
+                'href' => item[:href],
                 'media-type' => item[:mimetype]
               )
             }
           }
           xml.spine(:toc => NCX) {
-            manifest_items.select { |item| item[:spine] }.each { |item|
-              xml.itemref(:idref => item[:id], :linear => item[:spine])
+            @component_lookup.select { |item| item[:linear] }.each { |item|
+              xml.itemref(:idref => item[:id], :linear => item[:linear])
             }
           }
           xml.guide {
-            if item = manifest_items.detect { |it| it[:id] == "cover" }
+            if item = @component_lookup.detect { |it| it[:id] == "cover" }
               xml.reference(
                 :type => "cover",
                 :title => "Cover",
                 :href => item[:path]
               )
             end
-            if item = manifest_items.detect { |it| it[:id] == "toc" }
+            if item = @component_lookup.detect { |it| it[:id] == "toc" }
               xml.reference(
                 :type => "toc",
                 :title => "Table of Contents",
                 :href => item[:path]
               )
             end
-            if item = manifest_items.detect { |it| it[:id] == "loi" }
+            if item = @component_lookup.detect { |it| it[:id] == "loi" }
               xml.reference(
                 :type => "loi",
                 :title => "List of Illustrations",
@@ -417,21 +444,6 @@ class Peregrin::Epub
       ]
       `#{cmd.join(" && ")}`
       path
-    end
-
-
-    def manifest_item(id, path, spine = nil, mimetype = nil)
-      path = path.gsub(/^#{working_dir(OEBPS)}\//, '')
-      cmpt = { :id => id, :path => path, :mimetype => mimetype, :spine => spine }
-      unless cmpt[:mimetype]
-        @mime_lookup.detect { |pattern, mt|
-          cmpt[:mimetype] = mt  if path.match(pattern)
-        }  if defined?(@mime_lookup) && @mime_lookup
-
-        ext = File.extname(path)
-        cmpt[:mimetype] ||= MIMETYPE_MAP[ext] || 'application/unknown'
-      end
-      cmpt
     end
 
 
@@ -475,7 +487,7 @@ class Peregrin::Epub
       File.open(path, 'w') { |f|
         builder.doc.write_xml_to(f, :encoding => 'UTF-8', :indent => 2)
       }
-      path
+      path.gsub(/^#{working_dir(OEBPS)}\//, '')
     end
 
 
@@ -488,7 +500,7 @@ class Peregrin::Epub
       doc = Nokogiri::HTML::Builder.new { |html| yield(html) }.doc
       bdy.add_child(doc.root)
       File.open(path, 'w') { |f| f.write(root_to_xhtml(@shell_document.root)) }
-      path
+      path.gsub(/^#{working_dir(OEBPS)}\//, '')
     end
 
 

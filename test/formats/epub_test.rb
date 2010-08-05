@@ -14,7 +14,6 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
 
   def test_write_to_epub
     epub = Peregrin::Epub.new(strunk_book)
-    epub.mime_lookup = { Regexp.new("^.*\.xml$") => "application/xhtml+xml" }
     epub.write('test/fixtures/epubs/tmp/strunk_test.epub')
     assert(File.exists?('test/fixtures/epubs/tmp/strunk_test.epub'))
   end
@@ -62,7 +61,6 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
 
   def test_read_epub_to_write_epub
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
-    epub.mime_lookup = { Regexp.new("^.*\.xml$") => "application/xhtml+xml" }
     epub.write("test/fixtures/epubs/tmp/strunk_test2.epub")
     assert(File.exists?('test/fixtures/epubs/tmp/strunk_test2.epub'))
   end
