@@ -60,8 +60,31 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
 
 
   def test_extracting_cover
-    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
-    assert_equal("images/cover.png", epub.to_book.cover)
+    # Cover image referenced from metadata
+    epub = Peregrin::Epub.read("test/fixtures/epubs/covers/cover_in_meta.epub")
+    assert_equal("cover.png", epub.to_book.cover)
+
+    # First image in a component listed in the guide as 'cover'
+    epub = Peregrin::Epub.read("test/fixtures/epubs/covers/cover_in_guide.epub")
+    assert_equal("cover.png", epub.to_book.cover)
+
+    # A component with the id of 'cover-image'.
+    epub = Peregrin::Epub.read(
+      "test/fixtures/epubs/covers/cover-image_in_manifest.epub"
+    )
+    assert_equal("cover.png", epub.to_book.cover)
+
+    # First image in component with the id of 'cover'.
+    epub = Peregrin::Epub.read(
+      "test/fixtures/epubs/covers/cover_in_manifest.epub"
+    )
+    assert_equal("cover.png", epub.to_book.cover)
+
+    # First image in first component.
+    epub = Peregrin::Epub.read(
+      "test/fixtures/epubs/covers/cover_in_first_cmpt.epub"
+    )
+    assert_equal("cover.png", epub.to_book.cover)
   end
 
 

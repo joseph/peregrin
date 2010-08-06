@@ -124,12 +124,12 @@ class Peregrin::Epub
       Zip::ZipFile.open(epub_path) { |zipfile|
         docs = load_config_documents(zipfile)
         extract_metadata(docs[:opf])
-        extract_components(zipfile, docs[:opf], docs[:opf_path])
+        extract_components(zipfile, docs[:opf], docs[:opf_root])
         extract_chapters(zipfile, docs[:ncx])
         extract_cover(zipfile, docs)
       }
       @book.media_copy_proc = lambda { |media_path, dest_path|
-        media_path = File.join(File.dirname(docs[:opf_path]), media_path)
+        media_path = File.join(docs[:opf_root], media_path)
         Zip::ZipFile.open(epub_path) { |zipfile|
           zipfile.extract(media_path, dest_path)
         }
@@ -151,6 +151,7 @@ class Peregrin::Epub
           '//ocf:rootfile[@media-type="application/oebps-package+xml"]',
           NAMESPACES[:ocf]
         )['full-path']
+        docs[:opf_root] = File.dirname(docs[:opf_path])
         docs[:opf] = Nokogiri::XML::Document.parse(zipfile.read(docs[:opf_path]))
       rescue
         raise FailureLoadingOPF
@@ -164,7 +165,7 @@ class Peregrin::Epub
           "//opf:manifest/opf:item[@id='#{ncx_id}']",
           NAMESPACES[:opf]
         )
-        docs[:ncx_path] = File.join(File.dirname(docs[:opf_path]), item['href'])
+        docs[:ncx_path] = File.join(docs[:opf_root], item['href'])
         docs[:ncx] = Nokogiri::XML::Document.parse(zipfile.read(docs[:ncx_path]))
       rescue
         raise FailureLoadingNCX
@@ -196,8 +197,7 @@ class Peregrin::Epub
     end
 
 
-    def extract_components(zipfile, opf_doc, opf_path)
-      opf_root = File.dirname(opf_path)
+    def extract_components(zipfile, opf_doc, opf_root)
       ids = {}
       manifest = opf_doc.at_xpath('//opf:manifest', NAMESPACES[:opf])
       spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
@@ -213,7 +213,7 @@ class Peregrin::Epub
           :linear => iref['linear'] || 'yes'
         )
         if iref['linear'] != 'no'
-          cmpt_path = (opf_root == '.' ? href : File.join(opf_root, href))
+          cmpt_path = (opf_root== '.' ? href : File.join(opf_root, href))
           @book.components.push(href => zipfile.read(cmpt_path))
         end
       }
@@ -256,35 +256,39 @@ class Peregrin::Epub
 
 
     def extract_cover(zipfile, docs)
+      @book.cover = nil
+
+      # 1. Cover image referenced from metadata
       if id = @book.metadata['cover']
-        @book.cover = @component_lookup.detect { |c| c[:id] == id }[:href]
+        cmpt = @component_lookup.detect { |c| c[:id] == id }
       end
 
-      unless @book.cover
-        cmpt = @component_lookup.detect { |c| c[:guide_type] == 'cover' }
-        @book.cover = cmpt[:href]  if cmpt
-      end
+      # 2. First image in a component listed in the guide as 'cover'
+      cmpt ||= @component_lookup.detect {|c| c[:guide_type] == 'cover'}
 
-      unless @book.cover
-        cmpt = @component_lookup.detect { |c| c[:id] == 'cover_image' }
-        @book.cover = cmpt[:href]  if cmpt
-      end
+      # 3. A component with the id of 'cover-image'.
+      cmpt ||= @component_lookup.detect { |c| c[:id] == 'cover-image' }
 
-      unless @book.cover
-        cmpt = @component_lookup.detect { |c| c[:id] == 'cover' }
-        @book.cover = cmpt[:href]  if cmpt
-      end
+      # 4. First image in component with the id of 'cover'.
+      cmpt ||= @component_lookup.detect { |c| c[:id] == 'cover' }
 
-      unless @book.cover
-        @book.components.first.each_pair { |href, src|
-          doc = Nokogiri::HTML::Document.parse(src)
-          img = doc.at_css('img')
-          @book.cover = img['src']  if img
-        }
+      # 5. First image in first component.
+      cmpt ||= @component_lookup.detect { |c| c[:linear] == "yes" }
+
+      return  unless cmpt
+
+      if cmpt[:mimetype].match(/^image\//)
+        @book.cover = cmpt[:href]
+      else
+        path = File.join(docs[:opf_root], cmpt[:href])
+        doc = Nokogiri::HTML::Document.parse(zipfile.read(path))
+        img = doc.at_css('img')
+        @book.cover = img['src']  if img
       end
 
       @book.cover
     end
+
 
     #---------------------------------------------------------------------------
     # WRITING
@@ -368,11 +372,10 @@ class Peregrin::Epub
 
       # Other components (@book.media)
       @book.media.each { |media_path|
-        id = "#{File.dirname(media_path)}-" +
-          "#{File.basename(media_path, File.extname(media_path))}".gsub(
-            /[^\w]+/,
-            '-'
-          )
+        id = (
+          "#{File.dirname(media_path)}-" +
+          "#{File.basename(media_path, File.extname(media_path))}"
+        ).gsub(/[^\w]+/, '-')
         dest_path = working_dir(OEBPS, media_path)
         FileUtils.mkdir_p(File.dirname(dest_path))
         @book.copy_media_to(media_path, dest_path)

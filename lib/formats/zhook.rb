@@ -45,6 +45,11 @@ class Peregrin::Zhook
         book.media.push(ze)  unless ze == INDEX_PATH
       }
     }
+    book.media_copy_proc = lambda { |media_path, dest_path|
+      Zip::ZipFile.open(path) { |zipfile|
+        zipfile.extract(media_path, dest_path)
+      }
+    }
     doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
     doc.css('html head meta[name]').each { |meta|
       name = meta['name']
