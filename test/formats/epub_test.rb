@@ -59,6 +59,12 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
   end
 
 
+  def test_extracting_cover
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal("images/cover.png", epub.to_book.cover)
+  end
+
+
   def test_read_epub_to_write_epub
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
     epub.write("test/fixtures/epubs/tmp/strunk_test2.epub")

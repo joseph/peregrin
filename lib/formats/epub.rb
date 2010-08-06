@@ -83,30 +83,35 @@ class Peregrin::Epub
     def process_book
       @book.components.each { |cmpt|
         href = cmpt.keys.first
-        register_component(href, nil, nil, 'yes')
+        register_component(href, :linear => 'yes')
       }
 
       @book.media.each { |href|
         register_component(href)
       }
 
-      # TODO: generate ToC, cover, LoI?
+      @book.metadata.each_pair { |name, content|
+        register_metadata(name, content)
+      }
     end
 
 
-
-    def register_component(href, id = nil, mimetype = nil, linear = nil)
-      cmpt = {
-        :href => href,
-        :id => id,
-        :mimetype => mimetype,
-        :linear => linear
-      }
+    def register_component(href, attributes = {})
+      cmpt = attributes.merge(:href => href)
       cmpt[:id] ||= href.gsub(/[^\w]+/, '-').gsub(/^-+/, '')
       cmpt[:mimetype] ||= MIMETYPE_MAP[File.extname(href)]
       cmpt[:mimetype] ||= "application/unknown"
       @component_lookup << cmpt
       cmpt
+    end
+
+
+    def register_metadata(name, content, attributes = nil)
+      @metadata_lookup << {
+        :name => name,
+        :content => content,
+        :attributes => attributes
+      }
     end
 
 
@@ -121,6 +126,7 @@ class Peregrin::Epub
         extract_metadata(docs[:opf])
         extract_components(zipfile, docs[:opf], docs[:opf_path])
         extract_chapters(zipfile, docs[:ncx])
+        extract_cover(zipfile, docs)
       }
       @book.media_copy_proc = lambda { |media_path, dest_path|
         media_path = File.join(File.dirname(docs[:opf_path]), media_path)
@@ -182,6 +188,7 @@ class Peregrin::Epub
           name = elem.name
           content = elem.content
         end
+        register_metadata(name, content, elem.attributes)
 
         acc[name] = (acc[name] ? "#{acc[name]}\n#{content}" : content)
         acc
@@ -199,7 +206,12 @@ class Peregrin::Epub
         id = iref['idref']
         item = manifest.at_xpath("//opf:item[@id='#{id}']", NAMESPACES[:opf])
         href = item['href']
-        register_component(href, id, item['media-type'], iref['linear'])
+        register_component(
+          href,
+          :id => id,
+          :mimetype => item['media-type'],
+          :linear => iref['linear'] || 'yes'
+        )
         if iref['linear'] != 'no'
           cmpt_path = (opf_root == '.' ? href : File.join(opf_root, href))
           @book.components.push(href => zipfile.read(cmpt_path))
@@ -211,8 +223,14 @@ class Peregrin::Epub
         next  if item['media-type'] == MIMETYPE_MAP['.ncx']
         next  if @component_lookup.any? { |cmpt| cmpt[:id] == id }
         href = item['href']
-        register_component(href, id, item['media-type'])
+        register_component(href, :id => id, :mimetype => item['media-type'])
         @book.media.push(href)
+      }
+
+      opf_doc.search("//opf:guide/opf:reference", NAMESPACES[:opf]).each { |ref|
+        it = @component_lookup.detect { |cmpt| cmpt[:href] == ref['href'] }
+        it[:guide_type] = ref['type']
+        it[:guide] = ref['title']
       }
     end
 
@@ -236,6 +254,37 @@ class Peregrin::Epub
       }
     end
 
+
+    def extract_cover(zipfile, docs)
+      if id = @book.metadata['cover']
+        @book.cover = @component_lookup.detect { |c| c[:id] == id }[:href]
+      end
+
+      unless @book.cover
+        cmpt = @component_lookup.detect { |c| c[:guide_type] == 'cover' }
+        @book.cover = cmpt[:href]  if cmpt
+      end
+
+      unless @book.cover
+        cmpt = @component_lookup.detect { |c| c[:id] == 'cover_image' }
+        @book.cover = cmpt[:href]  if cmpt
+      end
+
+      unless @book.cover
+        cmpt = @component_lookup.detect { |c| c[:id] == 'cover' }
+        @book.cover = cmpt[:href]  if cmpt
+      end
+
+      unless @book.cover
+        @book.components.first.each_pair { |href, src|
+          doc = Nokogiri::HTML::Document.parse(src)
+          img = doc.at_css('img')
+          @book.cover = img['src']  if img
+        }
+      end
+
+      @book.cover
+    end
 
     #---------------------------------------------------------------------------
     # WRITING
@@ -302,7 +351,7 @@ class Peregrin::Epub
           }
         }
       }
-      register_component(ncx_path, NCX)
+      register_component(ncx_path, :id => NCX)
     end
 
 
@@ -344,18 +393,29 @@ class Peregrin::Epub
           }
           curse.call(@book.contents)
         }
-        register_component(path, "toc", nil, "no")
+        register_component(
+          path,
+          :id => "toc",
+          :linear => "no",
+          :guide => "Table of Contents"
+        )
       end
 
       # Cover page
-      unless @component_lookup.detect { |it| it[:id] == "cover" }
-        path = build_html_file(working_dir(OEBPS, "cover.html")) { |html|
-          html.div(:id => "cover") {
-            # TODO: get filename of cover image...
-            html.img(:src => "cover.png", :alt => @book.metadata["title"])
+      if @book.cover
+        unless @component_lookup.detect { |it| it[:id] == "cover" }
+          path = build_html_file(working_dir(OEBPS, "cover.html")) { |html|
+            html.div(:id => "cover") {
+              html.img(:src => @book.cover, :alt => @book.metadata["title"])
+            }
           }
-        }
-        register_component(path, "cover", nil, "no")
+          register_component(
+            path,
+            :id => "cover",
+            :linear => "no",
+            :guide => "Cover"
+          )
+        end
       end
     end
 
@@ -404,27 +464,13 @@ class Peregrin::Epub
             }
           }
           xml.guide {
-            if item = @component_lookup.detect { |it| it[:id] == "cover" }
+            @component_lookup.select { |it| it[:guide] }.each { |guide_item|
               xml.reference(
-                :type => "cover",
-                :title => "Cover",
-                :href => item[:path]
+                :type => guide_item[:guide_type] || guide_item[:id],
+                :title => guide_item[:guide],
+                :href => guide_item[:href]
               )
-            end
-            if item = @component_lookup.detect { |it| it[:id] == "toc" }
-              xml.reference(
-                :type => "toc",
-                :title => "Table of Contents",
-                :href => item[:path]
-              )
-            end
-            if item = @component_lookup.detect { |it| it[:id] == "loi" }
-              xml.reference(
-                :type => "loi",
-                :title => "List of Illustrations",
-                :href => item[:path]
-              )
-            end
+            }
           }
         }
       }

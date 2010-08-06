@@ -39,10 +39,11 @@ module Peregrin
     #   name => value
     attr_accessor :metadata
 
-
     # An array of filenames.
     attr_accessor :media
 
+    # A string filename, should match one found in media.
+    attr_accessor :cover
 
     # A proc that copies media to the given destination.
     attr_writer :media_copy_proc

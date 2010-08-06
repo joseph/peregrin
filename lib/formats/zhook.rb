@@ -72,6 +72,8 @@ class Peregrin::Zhook
     consolidate_metadata(@book)
 
     @book.contents = outline_book(index)
+
+    @book.cover ||= "cover.png"
   end
 
 
