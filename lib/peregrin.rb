@@ -1,5 +1,7 @@
 module Peregrin
 
+  VERSION = "1.0.0"
+
   # Required gems
   require 'zip/zip'  # Name of gem is "rubyzip"
   require 'zip/zipfilesystem'
