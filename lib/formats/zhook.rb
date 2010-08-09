@@ -85,6 +85,10 @@ class Peregrin::Zhook
   # Writes the internal book object to a .zhook file at the given path.
   #
   def write(path)
+    Zip::ZipFile.open(path, Zip::ZipFile::CREATE) { |zipfile|
+      zipfile.get_output_stream("index.html") { |f| f.puts(htmlize(index)) }
+    }
+    path
   end
 
 
@@ -181,6 +185,17 @@ class Peregrin::Zhook
       end
 
       curse = lambda { |sxn|
+        chapter = {}
+
+        chapter[:title] = sxn.heading_text  if sxn.heading_text
+
+        # identify any relevant child sections
+        children = sxn.sections.collect { |ch|
+          curse.call(ch) unless ch.empty?
+        }.compact
+
+        chapter[:children] = children if children.any?
+
         # Find the component parent
         n = sxn.node || sxn.heading
         while n && n.respond_to?(:parent)
@@ -194,25 +209,16 @@ class Peregrin::Zhook
           sid ||= sxn.node['id'] if sxn.node
           cmptURI += "#"+sid if sid && !sid.empty?
 
-          chapter = {
-            :title => sxn.heading_text,
-            :src => cmptURI
-          }
-
-          # identify any relevant child sections
-          children = sxn.sections.collect { |ch|
-            curse.call(ch) unless ch.empty?
-          }.compact
-
-          chapter[:children] = children if children.any?
-
-          chapter
-        else
-          nil
+          chapter[:src] = cmptURI
         end
+        chapter
       }
 
-      curse.call(@outliner.result_root)[:children]
+      result = curse.call(@outliner.result_root)[:children]
+      while result && result.length == 1 && result.first[:title].nil?
+        result = result.first[:children]
+      end
+      result
     end
 
 

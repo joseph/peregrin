@@ -35,20 +35,20 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
 
     # An actual valid .zhook
     assert_nothing_raised {
-      Peregrin::Zhook.validate('test/fixtures/zhooks/basic.zhook')
+      Peregrin::Zhook.validate('test/fixtures/zhooks/flat.zhook')
     }
   end
 
 
   def test_read
-    ook = Peregrin::Zhook.read('test/fixtures/zhooks/basic.zhook')
+    ook = Peregrin::Zhook.read('test/fixtures/zhooks/2level.zhook')
     book = ook.to_book
     assert_equal(1, book.components.length)
     assert_equal("index.html", book.components.first.keys.first)
     assert_equal(['cover.png'], book.media)
-    assert_equal("A Basic Zhook", book.metadata['title'])
+    assert_equal("A Two-Level Zhook", book.metadata['title'])
     assert_equal([{
-      :title => "A Basic Zhook",
+      :title => "A Two-Level Zhook",
       :src => "index.html",
       :children => [
         { :title => "Part One", :src => "index.html#part1" },
@@ -59,15 +59,52 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
 
 
   def test_to_book_componentization
-    ook = Peregrin::Zhook.read('test/fixtures/zhooks/basic.zhook')
+    ook = Peregrin::Zhook.read('test/fixtures/zhooks/flat.zhook')
     book = ook.to_book(:componentize => true)
     assert_equal(3, book.components.length)
+    assert_equal([
+      { :title => "A Flat Zhook", :src => "index.html" },
+      { :title => "Part One", :src => "part001.html#part1" },
+      { :title => "Part Two", :src => "part002.html#part2" }
+    ], book.contents)
+  end
+
+
+  def test_2_level_componentization
+    ook = Peregrin::Zhook.read('test/fixtures/zhooks/2level.zhook')
+    book = ook.to_book(:componentize => true)
     assert_equal([{
-      :title => "A Basic Zhook",
+      :title => "A Two-Level Zhook",
       :src => "index.html",
       :children => [
         { :title => "Part One", :src => "part001.html#part1" },
         { :title => "Part Two", :src => "part002.html#part2" }
+      ]
+    }], book.contents)
+  end
+
+
+  def test_3_level_componentization
+    ook = Peregrin::Zhook.read('test/fixtures/zhooks/3level.zhook')
+    book = ook.to_book(:componentize => true)
+    assert_equal([{
+      :title => "A Three-Level Zhook",
+      :src => "index.html",
+      :children => [
+        {
+          :title => "Part One",
+          :src => "part001.html#part1",
+          :children => [
+            { :title => "Sub-part One Dot Two", :src => "part002.html" }
+          ]
+        },
+        {
+          :title => "Part Two",
+          :src => "part003.html#part2",
+          :children => [
+            { :title => "Sub-part Two Dot Two", :src => "part004.html" }
+          ]
+        }
       ]
     }], book.contents)
   end
