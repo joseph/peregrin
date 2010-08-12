@@ -60,7 +60,7 @@ class Peregrin::Ochook < Peregrin::Zhook
     # Media
     @book.media.each { |mpath|
       full_path = File.join(dir, mpath)
-      FileUtils.mkdir_p(File.dirname(mpath))
+      FileUtils.mkdir_p(File.dirname(full_path))
       File.open(full_path, 'w') { |f| f << @book.read_media(mpath) }
     }
 
