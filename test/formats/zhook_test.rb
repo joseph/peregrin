@@ -170,4 +170,43 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     )
   end
 
+
+  def test_write_from_epub
+    epub = Peregrin::Epub.read('test/fixtures/epubs/alice.epub')
+    book = epub.to_book
+    ook = Peregrin::Zhook.new(book)
+    ook.write('test/output/alice.zhook')
+    assert_nothing_raised {
+      Peregrin::Zhook.validate('test/output/alice.zhook')
+    }
+  end
+
+
+  def test_convert_jpg_cover_on_write
+    # Create an epub object, convert it to a book, and verify that the cover
+    # is a JPEG.
+    epub = Peregrin::Epub.read('test/fixtures/epubs/alice.epub')
+    book = epub.to_book
+    assert_equal(
+      "www.gutenberg.org@files@19033@19033-h@images@cover_th.jpg",
+      book.cover
+    )
+
+    # Write the book to file as a Zhook, which should convert the cover to PNG.
+    ook = Peregrin::Zhook.new(book)
+    ook.write('test/output/alice.zhook')
+
+    # Load the Zhook from file, and check that it has a cover.png.
+    ook2 = Peregrin::Zhook.read('test/output/alice.zhook')
+    book2 = ook2.to_book
+    assert_equal("cover.png", book2.cover)
+
+    # Validate the cover.png using ImageMagick's identify
+    IO.popen("identify -", "r+") { |io|
+      io.write(book2.read_media(book2.cover))
+      io.close_write
+      assert_match(/^[^\s]+ PNG /, io.read)
+    }
+  end
+
 end

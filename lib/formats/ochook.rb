@@ -1,5 +1,9 @@
 class Peregrin::Ochook < Peregrin::Zhook
 
+  def self.validate(path)
+  end
+
+
   def self.read(path)
     # TODO: read from that directory
   end

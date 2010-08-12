@@ -45,9 +45,9 @@ class Peregrin::Zhook
         book.media.push(ze)  unless ze == INDEX_PATH
       }
     }
-    book.media_copy_proc = lambda { |media_path, dest_path|
+    book.read_media_proc = lambda { |media_path|
       Zip::ZipFile.open(path) { |zipfile|
-        zipfile.extract(media_path, dest_path)
+        zipfile.read(media_path)
       }
     }
     doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
@@ -78,7 +78,9 @@ class Peregrin::Zhook
 
     @book.contents = outline_book(index)
 
-    @book.cover ||= "cover.png"
+    unless @book.cover || !@book.media.include?("cover.png")
+      @book.cover = "cover.png"
+    end
   end
 
 
@@ -87,6 +89,14 @@ class Peregrin::Zhook
   def write(path)
     Zip::ZipFile.open(path, Zip::ZipFile::CREATE) { |zipfile|
       zipfile.get_output_stream("index.html") { |f| f.puts(htmlize(index)) }
+      @book.media.each { |mpath|
+        zipfile.get_output_stream(mpath) { |f| f << @book.read_media(mpath) }
+      }
+      unless @book.cover == "cover.png"
+        zipfile.get_output_stream('cover.png') { |cfz|
+          cfz << to_png_data(@book.cover)
+        }
+      end
     }
     path
   end
@@ -137,6 +147,7 @@ class Peregrin::Zhook
     # Takes a book with multiple components and joins them together,
     # by creating article elements from every body element and appending them
     # to the body of the first component.
+    #
     def stitch_components(book)
       node = Nokogiri::XML::Node.new('article', index)
       bdy = index.at_xpath(BODY_XPATH)
@@ -234,6 +245,22 @@ class Peregrin::Zhook
     end
 
 
+    def to_png_data(path)
+      if File.extname(path) == ".png"
+        return @book.read_media(path)
+      else
+        raise ConvertUtilityMissing  unless `which convlert`
+        out = nil
+        IO.popen("convert - png:-", "r+") { |io|
+          io.write(@book.read_media(path))
+          io.close_write
+          out = io.read
+        }
+        out
+      end
+    end
+
+
   class ValidationError < ::RuntimeError
 
     def initialize(path = nil)
@@ -248,5 +275,7 @@ class Peregrin::Zhook
   class MissingIndexHTML < ValidationError; end
   class MissingCoverPNG < ValidationError; end
   class IndexHTMLRootHasId < ValidationError; end
+
+  class ConvertUtilityMissing < RuntimeError; end
 
 end

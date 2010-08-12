@@ -1,2 +1,2 @@
 test/ext/
-test/fixtures/epubs/tmp/
+test/output/*

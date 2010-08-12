@@ -128,10 +128,10 @@ class Peregrin::Epub
         extract_chapters(zipfile, docs[:ncx])
         extract_cover(zipfile, docs)
       }
-      @book.media_copy_proc = lambda { |media_path, dest_path|
+      @book.read_media_proc = lambda { |media_path|
         media_path = File.join(docs[:opf_root], media_path)
         Zip::ZipFile.open(epub_path) { |zipfile|
-          zipfile.extract(media_path, dest_path)
+          zipfile.read(media_path)
         }
       }
     end
@@ -376,6 +376,7 @@ class Peregrin::Epub
           "#{File.dirname(media_path)}-" +
           "#{File.basename(media_path, File.extname(media_path))}"
         ).gsub(/[^\w]+/, '-')
+        # FIXME: id must begin with an alpha character, and must be unique.
         dest_path = working_dir(OEBPS, media_path)
         FileUtils.mkdir_p(File.dirname(dest_path))
         @book.copy_media_to(media_path, dest_path)
@@ -560,7 +561,7 @@ class Peregrin::Epub
         elem['class'] = "#{k.nil? || k.empty? ? '' : "#{k} " }#{elem.name}"
         elem.name = "div"
       }
-      root.remove_attribute('xmlns')#, "http://www.w3.org/1999/xhtml")
+      root.remove_attribute('xmlns')
       root.to_xhtml(:indent => 2)
     end
 

@@ -48,7 +48,7 @@ module Peregrin
     attr_accessor :cover
 
     # A proc that copies media to the given destination.
-    attr_writer :media_copy_proc
+    attr_writer :read_media_proc
 
 
     def initialize
@@ -59,19 +59,24 @@ module Peregrin
     end
 
 
+    def read_media(media_path)
+      @read_media_proc.call(media_path)  if @read_media_proc
+    end
+
+
     def copy_media_to(media_path, dest_path)
-      if @media_copy_proc
-        @media_copy_proc.call(media_path, dest_path)
-      end
+      File.open(dest_path, 'w') { |f|
+        f << read_media(media_path)
+      }
     end
 
 
     def deep_clone
-      @media_copy_proc ||= nil
-      tmp = @media_copy_proc
-      @media_copy_proc = nil
+      @read_media_proc ||= nil
+      tmp = @read_media_proc
+      @read_media_proc = nil
       clone = Marshal.load(Marshal.dump(self))
-      clone.media_copy_proc = @media_copy_proc = tmp
+      clone.read_media_proc = @read_media_proc = tmp
       clone
     end
 
