@@ -4,6 +4,7 @@ class Peregrin::Zhook
   INDEX_PATH = "index.html"
   COVER_PATH = "cover.png"
   BODY_XPATH = '/html/body'
+  HEAD_XPATH = '/html/head'
 
   # Raises an exception if file at path is not a valid Zhook. Otherwise
   # returns true.
@@ -126,7 +127,7 @@ class Peregrin::Zhook
       bk.components.each_with_index { |cmpt, i|
         path = cmpt.keys.first
         doc = cmpt.values.first
-        head = doc.at_xpath('/html/head')
+        head = doc.at_xpath(HEAD_XPATH)
         prev_path = bk.components[i-1].keys.first if (i-1) >= 0
         next_path = bk.components[i+1].keys.first if (i+1) < bk.components.size
         head.add_child(boilerplate_rel_links)
@@ -164,7 +165,7 @@ class Peregrin::Zhook
           }
         }.doc
         loi_doc = componentizer.generate_document(doc.root)
-        loi_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
+        loi_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
         bk.components.unshift("loi.html" => htmlize(loi_doc))
       end
 
@@ -183,7 +184,7 @@ class Peregrin::Zhook
         curse.call(bk.contents)
       }.doc
       toc_doc = componentizer.generate_document(doc.root)
-      toc_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
+      toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
       # FIXME: this should set guide to "Table of Contents",
       # guide_type to "toc" and linear to "no"
       bk.components.unshift("toc.html" => htmlize(toc_doc))
@@ -195,7 +196,7 @@ class Peregrin::Zhook
         }
       }.doc
       cover_doc = componentizer.generate_document(doc.root)
-      cover_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
+      cover_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
       # FIXME: this should set guide to "Cover",
       # guide_type to "cover" and linear to "no"
       bk.components.unshift("cover.html" => htmlize(cover_doc))
@@ -221,6 +222,7 @@ class Peregrin::Zhook
     def stitch_components(book)
       node = Nokogiri::XML::Node.new('article', index)
       bdy = index.at_xpath(BODY_XPATH)
+      head = index.at_xpath(HEAD_XPATH)
       bdy.children.each { |ch|
         node.add_child(ch)
       }
@@ -234,9 +236,17 @@ class Peregrin::Zhook
         art.name = 'article'
         bdy.add_child(art)
 
-        # TODO: what other elements from the head should we import?
-        # - link tags?
-        # - meta tags?
+        # Import all other unique elements from the head, like link & meta tags.
+        if dhead = doc.at_xpath(HEAD_XPATH)
+          dhead.children.each { |foreign_child|
+            next  if foreign_child.name.downcase == "title"
+            next  if head.children.any? { |index_child|
+              index_child.to_s == foreign_child.to_s
+            }
+            puts "Adding foreign child to head: #{foreign_child}"
+            head.add_child(foreign_child.dup)
+          }
+        end
       end
       book.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
     end
