@@ -113,6 +113,7 @@ class Peregrin::Zhook
       }
 
       # TODO: add rel links..
+
     else
       cmpt_xpaths.push(BODY_XPATH)
       bk.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
@@ -121,7 +122,61 @@ class Peregrin::Zhook
     # Outlining.
     bk.contents = outline_book(index, cmpt_xpaths)
 
-    # TODO: list of illustrations?
+
+    if options[:componentize]
+      # List of Illustrations
+      figures = index.css('figure[id], div.figure[id]')
+      if figures.any?
+        doc = Nokogiri::HTML::Builder.new { |html|
+          html.ol {
+            figures.each { |fig|
+              next  unless caption = fig.at_css('figcaption, .figcaption')
+              n = fig
+              while n && n.respond_to?(:parent)
+                break if cmpt_uri = uri_for_xpath(n.path, cmpt_xpaths)
+                n = n.parent
+              end
+              next  unless cmpt_uri
+              html.li {
+                html.a(caption.content, :href => "#{cmpt_uri}##{fig['id']}")
+              }
+            }
+          }
+        }.doc
+        loi_doc = componentizer.generate_document(doc.root)
+        bk.components.unshift("loi.html" => htmlize(loi_doc))
+      end
+
+      # Table of Contents
+      doc = Nokogiri::HTML::Builder.new { |html|
+        curse = lambda { |children|
+          html.ol {
+            children.each { |sxn|
+              html.li {
+                html.a(sxn[:title], :href => sxn[:src])
+                curse.call(sxn[:children])  if sxn[:children]
+              }
+            }
+          }
+        }
+        curse.call(bk.contents)
+      }.doc
+      toc_doc = componentizer.generate_document(doc.root)
+      # FIXME: this should set guide to "Table of Contents",
+      # guide_type to "toc" and linear to "no"
+      bk.components.unshift("toc.html" => htmlize(toc_doc))
+
+      # Cover
+      doc = Nokogiri::HTML::Builder.new { |html|
+        html.div(:id => "cover") {
+          html.img(:src => bk.cover, :alt => bk.metadata["title"])
+        }
+      }.doc
+      cover_doc = componentizer.generate_document(doc.root)
+      # FIXME: this should set guide to "Cover",
+      # guide_type to "cover" and linear to "no"
+      bk.components.unshift("cover.html" => htmlize(cover_doc))
+    end
 
     bk
   end
@@ -202,17 +257,17 @@ class Peregrin::Zhook
         # Find the component parent
         n = sxn.node || sxn.heading
         while n && n.respond_to?(:parent)
-          break if cmptURI = uri_for_xpath(n.path, cmpt_xpaths)
+          break if cmpt_uri = uri_for_xpath(n.path, cmpt_xpaths)
           n = n.parent
         end
 
-        if cmptURI
+        if cmpt_uri
           # get URI for section
           sid = sxn.heading['id'] if sxn.heading
           sid ||= sxn.node['id'] if sxn.node
-          cmptURI += "#"+sid if sid && !sid.empty?
+          cmpt_uri += "#"+sid if sid && !sid.empty?
 
-          chapter[:src] = cmptURI
+          chapter[:src] = cmpt_uri
         end
         chapter
       }

@@ -19,12 +19,17 @@ class Peregrin::Componentizer
   end
 
 
+  def generate_component(xpath)
+    raise "Not a component: #{xpath}"  unless @component_xpaths.include?(xpath)
+    node = @document.at_xpath(xpath)
+    generate_document(node)
+  end
+
+
   # Creates a new document with the same root and head nodes, but with
   # a body that just contains the nodes at the given xpath.
   #
-  def generate_component(xpath)
-    raise "Not a component: #{xpath}"  unless @component_xpaths.include?(xpath)
-
+  def generate_document(node)
     # Clean up the "shell" document.
     @shell_document ||= @document.dup
     bdy = @shell_document.at_xpath('/html/body')
@@ -33,7 +38,6 @@ class Peregrin::Componentizer
     # Find the node we're going to copy into the shell document.
     # Create a deep clone of it. Remove any children of it that are
     # componentizable in their own right.
-    node = @document.at_xpath(xpath)
     ndup = node.dup
     node.children.collect { |ch|
       next  unless component_xpaths.include?(ch.path)
@@ -45,7 +49,7 @@ class Peregrin::Componentizer
 
     # Append the node to the body of the shell (or replace the body, if
     # the node is a body itself).
-    if xpath == "/html/body"
+    if node.name.downcase == "body"
       bdy.replace(ndup)
     else
       bdy.add_child(ndup)

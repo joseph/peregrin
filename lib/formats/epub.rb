@@ -381,46 +381,6 @@ class Peregrin::Epub
         FileUtils.mkdir_p(File.dirname(dest_path))
         @book.copy_media_to(media_path, dest_path)
       }
-
-      # Table of Contents
-      unless @component_lookup.detect { |it| it[:id] == "toc" }
-        path = build_html_file(working_dir(OEBPS, "toc.html")) { |html|
-          curse = lambda { |children|
-            html.ol {
-              children.each { |sxn|
-                html.li {
-                  html.a(sxn[:title], :href => sxn[:src])
-                  curse.call(sxn[:children])  if sxn[:children]
-                }
-              }
-            }
-          }
-          curse.call(@book.contents)
-        }
-        register_component(
-          path,
-          :id => "toc",
-          :linear => "no",
-          :guide => "Table of Contents"
-        )
-      end
-
-      # Cover page
-      if @book.cover
-        unless @component_lookup.detect { |it| it[:id] == "cover" }
-          path = build_html_file(working_dir(OEBPS, "cover.html")) { |html|
-            html.div(:id => "cover") {
-              html.img(:src => @book.cover, :alt => @book.metadata["title"])
-            }
-          }
-          register_component(
-            path,
-            :id => "cover",
-            :linear => "no",
-            :guide => "Cover"
-          )
-        end
-      end
     end
 
 

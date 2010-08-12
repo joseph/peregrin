@@ -43,4 +43,37 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
     }
   end
 
+
+  def test_to_book_cover_html
+    ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
+    book = ook.to_book(:componentize => true)
+    cov_html = book.components.detect { |cmpt|
+      cmpt.keys.include?("cover.html")
+    }["cover.html"]
+    doc = Nokogiri::HTML::Document.parse(cov_html)
+    assert_equal('cover.png', doc.at_xpath('/html/body/div/img')['src'])
+  end
+
+
+  def test_to_book_toc_html
+    ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
+    book = ook.to_book(:componentize => true)
+    toc_html = book.components.detect { |cmpt|
+      cmpt.keys.include?("toc.html")
+    }["toc.html"]
+    doc = Nokogiri::HTML::Document.parse(toc_html)
+    assert_equal(3, doc.xpath('/html/body/ol/li').size)
+  end
+
+
+  def test_to_book_loi_html
+    ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
+    book = ook.to_book(:componentize => true)
+    loi_html = book.components.detect { |cmpt|
+      cmpt.keys.include?("loi.html")
+    }["loi.html"]
+    doc = Nokogiri::HTML::Document.parse(loi_html)
+    assert_equal(2, doc.xpath('/html/body/ol/li').size)
+  end
+
 end
