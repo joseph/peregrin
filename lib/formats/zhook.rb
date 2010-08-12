@@ -50,16 +50,8 @@ class Peregrin::Zhook
         zipfile.read(media_path)
       }
     }
-    doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
-    doc.css('html head meta[name]').each { |meta|
-      name = meta['name']
-      content = meta['content']
-      if book.metadata[name]
-        book.metadata[name] += "\n" + content
-      else
-        book.metadata[name] = content
-      end
-    }
+
+    extract_metadata_from_index(book)
 
     new(book)
   end
@@ -78,8 +70,8 @@ class Peregrin::Zhook
 
     @book.contents = outline_book(index)
 
-    unless @book.cover || !@book.media.include?("cover.png")
-      @book.cover = "cover.png"
+    unless @book.cover || !@book.media.include?(COVER_PATH)
+      @book.cover = COVER_PATH
     end
   end
 
@@ -88,12 +80,12 @@ class Peregrin::Zhook
   #
   def write(path)
     Zip::ZipFile.open(path, Zip::ZipFile::CREATE) { |zipfile|
-      zipfile.get_output_stream("index.html") { |f| f.puts(htmlize(index)) }
+      zipfile.get_output_stream("index.html") { |f| f << htmlize(index) }
       @book.media.each { |mpath|
         zipfile.get_output_stream(mpath) { |f| f << @book.read_media(mpath) }
       }
-      unless @book.cover == "cover.png"
-        zipfile.get_output_stream('cover.png') { |cfz|
+      unless @book.cover == COVER_PATH
+        zipfile.get_output_stream(COVER_PATH) { |cfz|
           cfz << to_png_data(@book.cover)
         }
       end
@@ -258,6 +250,20 @@ class Peregrin::Zhook
         }
         out
       end
+    end
+
+
+    def self.extract_metadata_from_index(book)
+      doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
+      doc.css('html head meta[name]').each { |meta|
+        name = meta['name']
+        content = meta['content']
+        if book.metadata[name]
+          book.metadata[name] += "\n" + content
+        else
+          book.metadata[name] = content
+        end
+      }
     end
 
 
