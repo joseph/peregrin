@@ -102,6 +102,11 @@ class Peregrin::Zhook
     # XPath => URI mapping tools
     cmpt_xpaths = []
 
+    boilerplate_rel_links =
+      '<link rel="start" href="cover.html" />' +
+      '<link rel="contents" href="toc.html" />'
+
+
     # Componentizing.
     if options[:componentize]
       componentizer = Peregrin::Componentizer.new(index)
@@ -109,11 +114,26 @@ class Peregrin::Zhook
       bk.components = componentizer.component_xpaths.collect { |xpath|
         cmpt_xpaths.push(xpath)
         doc = componentizer.generate_component(xpath)
-        { uri_for_xpath(xpath, cmpt_xpaths) => htmlize(doc) }
+        { uri_for_xpath(xpath, cmpt_xpaths) => doc }
       }
 
-      # TODO: add rel links..
-
+      # Add rel links and convert to html string
+      first_path = bk.components.first.keys.first
+      last_path = bk.components.last.keys.first
+      boilerplate_rel_links <<
+        '<link rel="first" href="'+bk.components.first.keys.first+'" />' +
+        '<link rel="last" href="'+bk.components.last.keys.first+'" />'
+      bk.components.each_with_index { |cmpt, i|
+        path = cmpt.keys.first
+        doc = cmpt.values.first
+        head = doc.at_xpath('/html/head')
+        prev_path = bk.components[i-1].keys.first if (i-1) >= 0
+        next_path = bk.components[i+1].keys.first if (i+1) < bk.components.size
+        head.add_child(boilerplate_rel_links)
+        head.add_child('<link rel="prev" href="'+prev_path+'" />') if prev_path
+        head.add_child('<link rel="next" href="'+next_path+'" />') if next_path
+        cmpt[path] = htmlize(doc)
+      }
     else
       cmpt_xpaths.push(BODY_XPATH)
       bk.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
@@ -144,6 +164,7 @@ class Peregrin::Zhook
           }
         }.doc
         loi_doc = componentizer.generate_document(doc.root)
+        loi_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
         bk.components.unshift("loi.html" => htmlize(loi_doc))
       end
 
@@ -162,6 +183,7 @@ class Peregrin::Zhook
         curse.call(bk.contents)
       }.doc
       toc_doc = componentizer.generate_document(doc.root)
+      toc_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
       # FIXME: this should set guide to "Table of Contents",
       # guide_type to "toc" and linear to "no"
       bk.components.unshift("toc.html" => htmlize(toc_doc))
@@ -173,6 +195,7 @@ class Peregrin::Zhook
         }
       }.doc
       cover_doc = componentizer.generate_document(doc.root)
+      cover_doc.at_xpath('/html/head').add_child(boilerplate_rel_links)
       # FIXME: this should set guide to "Cover",
       # guide_type to "cover" and linear to "no"
       bk.components.unshift("cover.html" => htmlize(cover_doc))

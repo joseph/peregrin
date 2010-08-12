@@ -55,7 +55,7 @@ class Peregrin::Componentizer
       bdy.add_child(ndup)
     end
 
-    @shell_document
+    @shell_document.dup
   end
 
 

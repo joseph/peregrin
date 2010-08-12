@@ -76,4 +76,32 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
     assert_equal(2, doc.xpath('/html/body/ol/li').size)
   end
 
+
+  def test_to_book_rel_links
+    ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
+    book = ook.to_book(:componentize => true)
+    cmpt_html = book.components.last.values.first
+    doc = Nokogiri::HTML::Document.parse(cmpt_html)
+    assert_equal(
+      "cover.html",
+      doc.at_xpath('/html/head/link[@rel="start"]')['href']
+    )
+    assert_equal(
+      "toc.html",
+      doc.at_xpath('/html/head/link[@rel="contents"]')['href']
+    )
+    assert_equal(
+      "index.html",
+      doc.at_xpath('/html/head/link[@rel="first"]')['href']
+    )
+    assert_equal(
+      "part002.html",
+      doc.at_xpath('/html/head/link[@rel="last"]')['href']
+    )
+    assert_equal(
+      "part001.html",
+      doc.at_xpath('/html/head/link[@rel="prev"]')['href']
+    )
+  end
+
 end
