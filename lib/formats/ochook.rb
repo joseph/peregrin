@@ -30,9 +30,9 @@ class Peregrin::Ochook < Peregrin::Zhook
     book.components.push(INDEX_PATH => IO.read(File.join(path, INDEX_PATH)))
     Dir.glob(File.join(path, '**', '*')).each { |fpath|
       ex = [INDEX_PATH, MANIFEST_PATH]
-      fpath = fpath.gsub(/^#{path}\//,'')
-      unless File.directory?(fpath) || ex.include?(fpath)
-        book.media.push(fpath)
+      mpath = fpath.gsub(/^#{path}\//,'')
+      unless File.directory?(fpath) || ex.include?(mpath)
+        book.media.push(mpath)
       end
     }
     book.read_media_proc = lambda { |media_path|
