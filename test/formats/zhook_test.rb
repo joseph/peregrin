@@ -121,7 +121,9 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
         <p>A para</p></body></html>
         ` },
       { "foo.html" => %Q`
-        <html><head><title>Foo</title></head><body>
+        <html><head><title>Foo</title>
+        <link rel="stylesheet" href="main.css" />
+        </head><body>
         <hgroup><h1>Part Foo</h1><h2>Peregrin Took</h2></hgroup>
         <cite>A cite tag</cite></body></html>
         ` },
@@ -132,7 +134,10 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
       whitewash(
         %Q`
         <!DOCTYPE html>
-        <html><head><title>Index</title></head><body>
+        <html><head>
+          <title>Index</title>
+          <link rel="stylesheet" href="main.css">
+        </head><body>
         <article>
           <p>A para</p>
         </article>

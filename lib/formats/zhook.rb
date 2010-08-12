@@ -243,7 +243,6 @@ class Peregrin::Zhook
             next  if head.children.any? { |index_child|
               index_child.to_s == foreign_child.to_s
             }
-            puts "Adding foreign child to head: #{foreign_child}"
             head.add_child(foreign_child.dup)
           }
         end
