@@ -1,8 +1,10 @@
 class Peregrin::Ochook < Peregrin::Zhook
 
+  FORMAT = "Ochook"
   MANIFEST_PATH = "ochook.manifest"
 
   def self.validate(path)
+    path = path.gsub(/\/$/, '')
     unless File.directory?(path)
       raise DirectoryNotFound.new(path)
     end
@@ -25,6 +27,7 @@ class Peregrin::Ochook < Peregrin::Zhook
 
 
   def self.read(path)
+    path = path.gsub(/\/$/, '')
     validate(path)
     book = Peregrin::Book.new
     book.components.push(INDEX_PATH => IO.read(File.join(path, INDEX_PATH)))

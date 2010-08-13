@@ -1,5 +1,7 @@
 class Peregrin::Zhook
 
+  FORMAT = "Zhook"
+
   FILE_EXT = ".zhook"
   INDEX_PATH = "index.html"
   COVER_PATH = "cover.png"

@@ -1,5 +1,7 @@
 class Peregrin::Epub
 
+  FORMAT = "EPUB"
+
   NAMESPACES = {
     :ocf => { 'ocf' => 'urn:oasis:names:tc:opendocument:xmlns:container' },
     :opf => { 'opf' => 'http://www.idpf.org/2007/opf' },

@@ -94,7 +94,11 @@ class Peregrin::Componentizer
       begin
         return false  unless (
           %w[body article].include?(node.name.downcase) ||
-          (node.name.downcase == "div" && node['class'].match(/\barticle\b/))
+          (
+            node.name.downcase == "div" &&
+            node['class'] &&
+            node['class'].match(/\barticle\b/)
+          )
         )
       end while node = node.next
       true

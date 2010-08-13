@@ -7,77 +7,106 @@ module Peregrin
   require 'zip/zipfilesystem'
   require 'nokogiri'
 
-  # Utility libs
-  require 'utils/componentizer'
-  require 'utils/outliner'
-
-  # Format classes
-  require 'formats/zhook'
-  require 'formats/ochook'
-  require 'formats/epub'
-
-
-  class Book
-
-    # An array of hashes:
-    #   [
-    #     uri => string-contents-of-component,
-    #     ...
-    #   ]
-    attr_accessor :components
-
-    # A hash hierarchy:
-    #   [
-    #     {
-    #       :title => ...,
-    #       :src => ...,
-    #       :children => [
-    #       ]
-    #     }
-    #   ]
-    attr_accessor :contents
-
-    # A simple hash:
-    #   name => value
-    attr_accessor :metadata
-
-    # An array of filenames.
-    attr_accessor :media
-
-    # A string filename, should match one found in media.
-    attr_accessor :cover
-
-    # A proc that copies media to the given destination.
-    attr_writer :read_media_proc
+  # Require libs in this directory
+  [
+    "book",
+    "utils/componentizer",
+    "utils/outliner",
+    "formats/epub",
+    "formats/zhook",
+    "formats/ochook"
+  ].each { |lib|
+    require File.join(File.dirname(__FILE__), lib)
+  }
 
 
-    def initialize
-      @components = []
-      @contents = []
-      @metadata = {}
-      @media = []
+  class Main
+
+    def self.run(args)
+      if args.size == 1
+        src = args.first
+        validate(src)
+        inspect(src)
+      elsif args.size == 2
+        src, dest = args
+        validate(src)
+        convert(src, dest)
+        inspect(dest)
+      else
+        usage
+      end
     end
 
 
-    def read_media(media_path)
-      @read_media_proc.call(media_path)  if @read_media_proc
+    def self.usage
+      puts "TODO: usage"
     end
 
 
-    def copy_media_to(media_path, dest_path)
-      File.open(dest_path, 'w') { |f|
-        f << read_media(media_path)
+    def self.validate(path)
+      klass = format_for_path(path)
+      klass.validate(path)
+    rescue UnknownFileFormat => e
+      exit_with("Unknown file format: #{path}")
+    rescue => e
+      exit_with("Invalid #{klass::FORMAT}: #{path}", "Reason — "+e.to_s)
+    end
+
+
+    def self.convert(src_path, dest_path)
+      src_klass = format_for_path(src_path)
+      dest_klass = format_for_path(dest_path)
+
+      src_ook = src_klass.read(src_path)
+
+      # FIXME: how do we do these options? User-specified? Dest-format-specified?
+      options = {}
+      options[:componentize] = true  if dest_klass == Peregrin::Epub
+      book = src_ook.to_book(options)
+
+      dest_ook = dest_klass.new(book)
+      dest_ook.write(dest_path)
+      validate(dest_path)
+    end
+
+
+    def self.inspect(path)
+      klass = format_for_path(path)
+      ook = klass.read(path)
+      book = ook.to_book
+      puts "[#{klass::FORMAT}]"
+      puts "Components:"
+      book.components.each { |cmpt| puts "  #{cmpt.keys.first}" }
+      puts "Media: #{book.media.size}"
+      book.media.each { |mpath| puts "  #{mpath}" }
+      puts "Cover: #{book.cover}"
+      puts "Metadata:"
+      book.metadata.each_pair { |name, content|
+        puts "  #{name}: #{content}"  unless content.empty?
       }
+      puts
     end
 
 
-    def deep_clone
-      @read_media_proc ||= nil
-      tmp = @read_media_proc
-      @read_media_proc = nil
-      clone = Marshal.load(Marshal.dump(self))
-      clone.read_media_proc = @read_media_proc = tmp
-      clone
+    private
+
+      def self.format_for_path(path)
+        return Peregrin::Zhook  if File.extname(path) == ".zhook"
+        return Peregrin::Epub  if File.extname(path) == ".epub"
+        return Peregrin::Ochook  if File.directory?(path) || !File.exists?(path)
+        raise UnknownFileFormat.new(path)
+      end
+
+
+      def self.exit_with(*remarks)
+        remarks.each { |rm| puts(rm) }
+        exit
+      end
+
+    class UnknownFileFormat < RuntimeError
+      def initialize(path = nil)
+        @page = path
+      end
     end
 
   end

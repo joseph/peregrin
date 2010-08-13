@@ -11,10 +11,10 @@ spec = Gem::Specification.new do |s|
   s.email = "joseph@inventivelabs.com.au"
   s.homepage = "http://inventivelabs.com.au"
   s.files = Dir['*.txt'] +
-    #Dir['bin/*'] +
+    Dir['bin/*'] +
     Dir['lib/**/*.rb'] +
     Dir['test/**/*.rb']
-  #s.executables = ["peregrin"]
+  s.executables = ["peregrin"]
   s.require_path = 'lib'
   s.has_rdoc = true
   #s.extra_rdoc_files = ['HISTORY', 'COPYING']
