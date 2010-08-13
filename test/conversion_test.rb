@@ -41,6 +41,7 @@ class Peregrin::Tests::ConversionTest < Test::Unit::TestCase
       'test/output/conversions/ochook_to_zhook.zhook',
       :componentize => true
     )
+    assert_nil(@dest_ook.send(:index).root['manifest'])
   end
 
 
@@ -69,10 +70,10 @@ class Peregrin::Tests::ConversionTest < Test::Unit::TestCase
   private
 
     def conversion_test(src_klass, dest_klass, src, dest, to_book_options = {})
-      src_ook = src_klass.read(src)
-      dest_ook = dest_klass.new(src_ook.to_book(to_book_options))
+      @src_ook = src_klass.read(src)
+      @dest_ook = dest_klass.new(@src_ook.to_book(to_book_options))
       FileUtils.mkdir_p(File.dirname(dest))
-      dest_ook.write(dest)
+      @dest_ook.write(dest)
       assert_nothing_raised { dest_klass.validate(dest) }
     end
 

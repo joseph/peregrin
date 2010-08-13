@@ -25,13 +25,10 @@ module Peregrin
     def self.run(args)
       if args.size == 1
         src = args.first
-        validate(src)
-        inspect(src)
+        validate(src) and inspect(src)
       elsif args.size == 2
         src, dest = args
-        validate(src)
-        convert(src, dest)
-        inspect(dest)
+        validate(src) and convert(src, dest) and inspect(dest)
       else
         usage
       end
@@ -46,6 +43,7 @@ module Peregrin
     def self.validate(path)
       klass = format_for_path(path)
       klass.validate(path)
+      true
     rescue UnknownFileFormat => e
       exit_with("Unknown file format: #{path}")
     rescue => e
@@ -53,9 +51,9 @@ module Peregrin
     end
 
 
-    def self.convert(src_path, dest_path)
-      src_klass = format_for_path(src_path)
-      dest_klass = format_for_path(dest_path)
+    def self.convert(src_path, dest_path, src_klass = nil, dest_klass = nil)
+      src_klass ||= format_for_path(src_path)
+      dest_klass ||= format_for_path(dest_path)
 
       src_ook = src_klass.read(src_path)
 
@@ -84,7 +82,7 @@ module Peregrin
       book.metadata.each_pair { |name, content|
         puts "  #{name}: #{content}"  unless content.empty?
       }
-      puts
+      true
     end
 
 
@@ -100,8 +98,9 @@ module Peregrin
 
       def self.exit_with(*remarks)
         remarks.each { |rm| puts(rm) }
-        exit
+        false
       end
+
 
     class UnknownFileFormat < RuntimeError
       def initialize(path = nil)

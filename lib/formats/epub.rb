@@ -344,9 +344,14 @@ class Peregrin::Epub
           }
           xml.navMap {
             x = 0
+            play_order = {}
             curse = lambda { |children|
               children.each { |chapter|
-                xml.navPoint(:id => "navPoint#{x+=1}", :playOrder => x) {
+                xml.navPoint(
+                  :id => "navPoint#{x+=1}",
+                  :playOrder => play_order[chapter[:src]] || x
+                ) {
+                  play_order[chapter[:src]] ||= x
                   xml.navLabel { xml.text_(chapter[:title]) }
                   xml.content(:src => chapter[:src])
                   curse.call(chapter[:children])  if chapter[:children]
@@ -410,8 +415,11 @@ class Peregrin::Epub
               'coverage',
               'rights'
             ].each { |dc|
-              val = @book.metadata[dc]
-              xml['dc'].send(dc, val)  if val
+              if val = @book.metadata[dc]
+                val.split(/\n/).each { |v|
+                  xml['dc'].send(dc, v)  if v
+                }
+              end
             }
             xml.meta(:name => "cover", :content => "cover")
           }

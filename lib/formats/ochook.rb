@@ -80,6 +80,12 @@ class Peregrin::Ochook < Peregrin::Zhook
   end
 
 
+  def to_book(options = {})
+    remove_manifest_attribute
+    super(options)
+  end
+
+
   protected
 
     def manifest
@@ -92,6 +98,10 @@ class Peregrin::Ochook < Peregrin::Zhook
       index.at_xpath('/html').set_attribute('manifest', MANIFEST_PATH)
     end
 
+
+    def remove_manifest_attribute
+      index.at_xpath('/html').remove_attribute('manifest')
+    end
 
 
   class DirectoryNotFound < ValidationError; end

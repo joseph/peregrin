@@ -45,7 +45,7 @@ class Peregrin::Zhook
       book.components.push(INDEX_PATH => zf.read(INDEX_PATH))
       Zip::ZipFile.foreach(path) { |entry|
         ze = entry.to_s
-        book.media.push(ze)  unless ze == INDEX_PATH
+        book.media.push(ze)  unless ze == INDEX_PATH || entry.directory?
       }
     }
     book.read_media_proc = lambda { |media_path|
@@ -82,6 +82,7 @@ class Peregrin::Zhook
   # Writes the internal book object to a .zhook file at the given path.
   #
   def write(path)
+    File.unlink(path)  if File.exists?(path)
     Zip::ZipFile.open(path, Zip::ZipFile::CREATE) { |zipfile|
       zipfile.get_output_stream("index.html") { |f| f << htmlize(index) }
       @book.media.each { |mpath|
