@@ -30,7 +30,7 @@ class Peregrin::Epub
     raise FileNotFound.new(path)  unless File.file?(path)
     begin
       zf = Zip::ZipFile.open(path)
-    rescue
+    rescue => e
       raise NotAZipArchive.new(path)
     end
 
@@ -131,7 +131,7 @@ class Peregrin::Epub
         extract_cover(zipfile, docs)
       }
       @book.read_media_proc = lambda { |media_path|
-        media_path = File.join(docs[:opf_root], media_path)
+        media_path = from_opf_root(docs[:opf_root], media_path)
         Zip::ZipFile.open(epub_path) { |zipfile|
           zipfile.read(media_path)
         }
@@ -167,9 +167,11 @@ class Peregrin::Epub
           "//opf:manifest/opf:item[@id='#{ncx_id}']",
           NAMESPACES[:opf]
         )
-        docs[:ncx_path] = File.join(docs[:opf_root], item['href'])
-        docs[:ncx] = Nokogiri::XML::Document.parse(zipfile.read(docs[:ncx_path]))
-      rescue
+
+        docs[:ncx_path] = from_opf_root(docs[:opf_root], item['href'])
+        ncx_content = zipfile.read(docs[:ncx_path])
+        docs[:ncx] = Nokogiri::XML::Document.parse(ncx_content)
+      rescue => e
         raise FailureLoadingNCX
       end
 
@@ -215,7 +217,7 @@ class Peregrin::Epub
           :linear => iref['linear'] || 'yes'
         )
         if iref['linear'] != 'no'
-          cmpt_path = (opf_root== '.' ? href : File.join(opf_root, href))
+          cmpt_path = (opf_root== '.' ? href : from_opf_root(opf_root, href))
           @book.components.push(href => zipfile.read(cmpt_path))
         end
       }
@@ -230,9 +232,10 @@ class Peregrin::Epub
       }
 
       opf_doc.search("//opf:guide/opf:reference", NAMESPACES[:opf]).each { |ref|
-        it = @component_lookup.detect { |cmpt| cmpt[:href] == ref['href'] }
-        it[:guide_type] = ref['type']
-        it[:guide] = ref['title']
+        if it = @component_lookup.detect { |cmpt| cmpt[:href] == ref['href'] }
+          it[:guide_type] = ref['type']
+          it[:guide] = ref['title']
+        end
       }
     end
 
@@ -282,7 +285,7 @@ class Peregrin::Epub
       if cmpt[:mimetype].match(/^image\//)
         @book.cover = cmpt[:href]
       else
-        path = File.join(docs[:opf_root], cmpt[:href])
+        path = from_opf_root(docs[:opf_root], cmpt[:href])
         doc = Nokogiri::HTML::Document.parse(zipfile.read(path))
         img = doc.at_css('img')
         @book.cover = img['src']  if img
@@ -533,6 +536,15 @@ class Peregrin::Epub
       }
       root.remove_attribute('xmlns')
       root.to_xhtml(:indent => 2)
+    end
+
+
+    def from_opf_root(opf_root, *args)
+      if opf_root && !opf_root.empty? && opf_root != '.'
+        File.join(opf_root, *args)
+      else
+        File.join(*args)
+      end
     end
 
 

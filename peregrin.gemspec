@@ -1,6 +1,4 @@
-$:.unshift('lib') unless $:.include?('lib')
-
-require 'peregrin'
+require 'lib/peregrin'
 
 spec = Gem::Specification.new do |s|
   s.name = 'peregrin'
@@ -9,7 +7,8 @@ spec = Gem::Specification.new do |s|
   s.description = "Peregrin converts EPUBs, Zhooks and Ochooks."
   s.author = "Joseph Pearson"
   s.email = "joseph@inventivelabs.com.au"
-  s.homepage = "http://inventivelabs.com.au"
+  s.homepage = "http://ochook.org/peregrin"
+  s.rubyforge_project = "nowarning"
   s.files = Dir['*.txt'] +
     Dir['bin/*'] +
     Dir['lib/**/*.rb'] +
@@ -17,7 +16,7 @@ spec = Gem::Specification.new do |s|
   s.executables = ["peregrin"]
   s.require_path = 'lib'
   s.has_rdoc = true
-  #s.extra_rdoc_files = ['HISTORY', 'COPYING']
+  s.extra_rdoc_files = ['README.md', 'MIT-LICENSE']
   s.rdoc_options += [
     '--title', 'Peregrin',
     '--main', 'README.md'
