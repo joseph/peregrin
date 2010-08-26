@@ -328,10 +328,11 @@ class Peregrin::Zhook
 
 
     def to_png_data(path)
+      return  if path.nil?
       if File.extname(path) == ".png"
         return @book.read_media(path)
       else
-        raise ConvertUtilityMissing  unless `which convlert`
+        raise ConvertUtilityMissing  unless `which convert`
         out = nil
         IO.popen("convert - png:-", "r+") { |io|
           io.write(@book.read_media(path))

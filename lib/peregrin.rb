@@ -36,7 +36,16 @@ module Peregrin
 
 
     def self.usage
-      puts "TODO: usage"
+      puts "Peregrin [http://ochook.org/peregrin]"
+      puts "Version: #{VERSION}"
+      puts "A tool for inspecting Zhooks, Ochooks and EPUB ebooks,"
+      puts "and converting between them."
+      puts ""
+      puts "Usage: peregrin srcpath [destpath]"
+      puts ""
+      puts "If one path given, validates ebook at that path and outputs analysis."
+      puts "If two paths given, converts from srcpath to destpath and outputs "
+      puts "analysis of converted ebook."
     end
 
 
