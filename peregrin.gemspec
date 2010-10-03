@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'peregrin'
-  s.version = Peregrin::VERSION
+  s.version = '1.0.0'
   s.summary = "Peregrin - ebook conversion"
   s.description = "Peregrin converts EPUBs, Zhooks and Ochooks."
   s.author = "Joseph Pearson"
