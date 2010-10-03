@@ -1,9 +1,6 @@
 #!/usr/bin/env ruby
 
-require 'rubygems'
+# NB: When testing locally, you can run this as: ruby -Ilib bin/peregrin
 
-require File.expand_path(
-  File.join(File.dirname(__FILE__), '..', 'lib', 'peregrin')
-)
-
+require 'peregrin'
 Peregrin::Main.run(ARGV)

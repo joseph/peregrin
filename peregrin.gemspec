@@ -1,5 +1,3 @@
-require 'lib/peregrin'
-
 spec = Gem::Specification.new do |s|
   s.name = 'peregrin'
   s.version = Peregrin::VERSION

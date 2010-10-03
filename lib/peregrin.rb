@@ -2,21 +2,21 @@ module Peregrin
 
   VERSION = "1.0.0"
 
-  # Required gems
+  # Required libraries
   require 'zip/zip'  # Name of gem is "rubyzip"
   require 'zip/zipfilesystem'
   require 'nokogiri'
 
   # Require libs in this directory
   [
-    "book",
-    "utils/componentizer",
-    "utils/outliner",
+    "peregrin/book",
+    "peregrin/componentizer",
+    "peregrin/outliner",
     "formats/epub",
     "formats/zhook",
     "formats/ochook"
   ].each { |lib|
-    require File.join(File.dirname(__FILE__), lib)
+    require lib
   }
 
 
@@ -56,7 +56,7 @@ module Peregrin
     rescue UnknownFileFormat => e
       exit_with("Unknown file format: #{path}")
     rescue => e
-      exit_with("Invalid #{klass::FORMAT}: #{path}", "Reason — "+e.to_s)
+      exit_with("Invalid #{klass::FORMAT}: #{path}", "Reason - #{e}")
     end
 
 

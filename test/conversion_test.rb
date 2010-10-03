@@ -1,4 +1,4 @@
-require 'test/helper'
+require 'test_helper'
 
 class Peregrin::Tests::ConversionTest < Test::Unit::TestCase
 

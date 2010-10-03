@@ -287,7 +287,7 @@ class Peregrin::Zhook
           curse.call(ch) unless ch.empty?
         }.compact
 
-        chapter[:children] = children if children.any?
+        chapter[:children] = children  if children.any?
 
         # Find the component parent
         n = sxn.node || sxn.heading
@@ -298,13 +298,21 @@ class Peregrin::Zhook
 
         if cmpt_uri
           # get URI for section
-          sid = sxn.heading['id'] if sxn.heading
-          sid ||= sxn.node['id'] if sxn.node
-          cmpt_uri += "#"+sid if sid && !sid.empty?
-
+          sid = sxn.heading['id']  if sxn.heading
+          sid ||= sxn.node['id']  if sxn.node
+          cmpt_uri += "#"+sid  if sid && !sid.empty?
           chapter[:src] = cmpt_uri
+
+          # if sid && !sid.empty?
+          #   chapter[:src] = (cmpt_uri + "#" + sid)
+          # elsif children.any?
+          #   chapter[:src] = cmpt_uri
+          # end
         end
         chapter
+
+        # Slight algorithm change: only show chapters with URIs and ids.
+        #chapter[:src] || children.any? ? chapter : nil
       }
 
       result = curse.call(@outliner.result_root)[:children]
