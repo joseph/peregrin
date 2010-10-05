@@ -20,5 +20,5 @@ spec = Gem::Specification.new do |s|
     '--main', 'README.md'
   ]
   s.add_dependency('nokogiri')
-  s.add_dependency('rubyzip')
+  s.add_dependency('zipruby')
 end

@@ -3,12 +3,13 @@ module Peregrin
   VERSION = "1.0.0"
 
   # Required libraries
-  require 'zip/zip'  # Name of gem is "rubyzip"
-  require 'zip/zipfilesystem'
+  require 'fileutils'
+  require 'zipruby'
   require 'nokogiri'
 
   # Require libs in this directory
   [
+    "peregrin/zip_patch",
     "peregrin/book",
     "peregrin/componentizer",
     "peregrin/outliner",

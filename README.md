@@ -18,7 +18,7 @@ utility provided by ImageMagick somewhere in your PATH.
 
 Required Ruby gems:
 
-* rubyzip
+* zipruby
 * nokogiri
 
 

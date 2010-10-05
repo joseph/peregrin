@@ -30,7 +30,7 @@ class Peregrin::Epub
   def self.validate(path)
     raise FileNotFound.new(path)  unless File.file?(path)
     begin
-      zf = Zip::ZipFile.open(path)
+      zf = Zip::Archive.open(path)
     rescue => e
       raise NotAZipArchive.new(path)
     end
@@ -124,7 +124,7 @@ class Peregrin::Epub
 
     def load_from_path(epub_path)
       docs = nil
-      Zip::ZipFile.open(epub_path) { |zipfile|
+      Zip::Archive.open(epub_path) { |zipfile|
         docs = load_config_documents(zipfile)
         extract_metadata(docs[:opf])
         extract_components(zipfile, docs[:opf], docs[:opf_root])
@@ -133,7 +133,7 @@ class Peregrin::Epub
       }
       @book.read_media_proc = lambda { |media_path|
         media_path = from_opf_root(docs[:opf_root], media_path)
-        Zip::ZipFile.open(epub_path) { |zipfile|
+        Zip::Archive.open(epub_path) { |zipfile|
           zipfile.read(media_path)
         }
       }
@@ -277,7 +277,7 @@ class Peregrin::Epub
         cmpt ||= @component_lookup.detect { |c| c[:id] == cvr_id }
       }
 
-      # 5. First image in first component.
+      # 4. First image in first component.
       cmpt ||= @component_lookup.first
 
       return  unless cmpt

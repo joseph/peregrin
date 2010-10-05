@@ -15,16 +15,16 @@ class Peregrin::Zhook
     raise FileNotFound.new(path)  unless File.file?(path)
     raise WrongExtension.new(path)  unless File.extname(path) == FILE_EXT
     begin
-      zf = Zip::ZipFile.open(path)
+      zf = Zip::Archive.open(path)
     rescue
       raise NotAZipArchive.new(path)
     end
 
-    unless zf.find_entry(INDEX_PATH)
+    unless zf.find(INDEX_PATH)
       raise MissingIndexHTML.new(path)
     end
 
-    unless zf.find_entry(COVER_PATH)
+    unless zf.find(COVER_PATH)
       raise MissingCoverPNG.new(path)
     end
 
@@ -41,15 +41,15 @@ class Peregrin::Zhook
   def self.read(path)
     validate(path)
     book = Peregrin::Book.new
-    Zip::ZipFile.open(path) { |zf|
+    Zip::Archive.open(path) { |zf|
       book.components.push(INDEX_PATH => zf.read(INDEX_PATH))
-      Zip::ZipFile.foreach(path) { |entry|
-        ze = entry.to_s
+      zf.each { |entry|
+        ze = entry.name
         book.media.push(ze)  unless ze == INDEX_PATH || entry.directory?
       }
     }
     book.read_media_proc = lambda { |media_path|
-      Zip::ZipFile.open(path) { |zipfile|
+      Zip::Archive.open(path) { |zipfile|
         zipfile.read(media_path)
       }
     }
@@ -83,15 +83,13 @@ class Peregrin::Zhook
   #
   def write(path)
     File.unlink(path)  if File.exists?(path)
-    Zip::ZipFile.open(path, Zip::ZipFile::CREATE) { |zipfile|
-      zipfile.get_output_stream("index.html") { |f| f << htmlize(index) }
+    Zip::Archive.open(path, Zip::CREATE) { |zipfile|
+      zipfile.add_buffer(INDEX_PATH, htmlize(index))
       @book.media.each { |mpath|
-        zipfile.get_output_stream(mpath) { |f| f << @book.read_media(mpath) }
+        zipfile.add_buffer(mpath, @book.read_media(mpath))
       }
       unless @book.cover == COVER_PATH
-        zipfile.get_output_stream(COVER_PATH) { |cfz|
-          cfz << to_png_data(@book.cover)
-        }
+        zipfile.add_buffer(COVER_PATH, to_png_data(@book.cover))
       end
     }
     path
