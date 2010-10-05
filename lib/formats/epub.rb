@@ -6,7 +6,8 @@ class Peregrin::Epub
     :ocf => { 'ocf' => 'urn:oasis:names:tc:opendocument:xmlns:container' },
     :opf => { 'opf' => 'http://www.idpf.org/2007/opf' },
     :dc => { 'dc' => 'http://purl.org/dc/elements/1.1/' },
-    :ncx => { 'ncx' => 'http://www.daisy.org/z3986/2005/ncx/' }
+    :ncx => { 'ncx' => 'http://www.daisy.org/z3986/2005/ncx/' },
+    :svg => { 'svg' => 'http://www.w3.org/2000/svg' }
   }
   OCF_PATH = "META-INF/container.xml"
   HTML5_TAGNAMES = %w[section nav article aside hgroup header footer figure figcaption] # FIXME: Which to divify? Which to leave as-is?
@@ -271,14 +272,13 @@ class Peregrin::Epub
       # 2. First image in a component listed in the guide as 'cover'
       cmpt ||= @component_lookup.detect {|c| c[:guide_type] == 'cover'}
 
-      # 3. A component with the id of 'cover-image'.
-      cmpt ||= @component_lookup.detect { |c| c[:id] == 'cover-image' }
-
-      # 4. First image in component with the id of 'cover'.
-      cmpt ||= @component_lookup.detect { |c| c[:id] == 'cover' }
+      # 3. A component with the id of 'cover-image', or 'cover', or 'coverpage'.
+      ['cover-image', 'cover', 'coverpage'].each { |cvr_id|
+        cmpt ||= @component_lookup.detect { |c| c[:id] == cvr_id }
+      }
 
       # 5. First image in first component.
-      cmpt ||= @component_lookup.detect { |c| c[:linear] == "yes" }
+      cmpt ||= @component_lookup.first
 
       return  unless cmpt
 
@@ -286,9 +286,16 @@ class Peregrin::Epub
         @book.cover = cmpt[:href]
       else
         path = from_opf_root(docs[:opf_root], cmpt[:href])
-        doc = Nokogiri::HTML::Document.parse(zipfile.read(path))
-        img = doc.at_css('img')
-        @book.cover = img['src']  if img
+        begin
+          doc = Nokogiri::XML::Document.parse(zipfile.read(path))
+          if img = doc.at_css('img')
+            @book.cover = img['src']
+          elsif img = doc.at_xpath('//svg:image', NAMESPACES[:svg])
+            @book.cover = img['href']
+          end
+        rescue
+          #puts "Cover component is not an image or an XML document."
+        end
       end
 
       @book.cover
