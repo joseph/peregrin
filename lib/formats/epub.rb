@@ -270,7 +270,7 @@ class Peregrin::Epub
       end
 
       # 2. First image in a component listed in the guide as 'cover'
-      cmpt ||= @component_lookup.detect {|c| c[:guide_type] == 'cover'}
+      cmpt ||= @component_lookup.detect { |c| c[:guide_type] == 'cover' }
 
       # 3. A component with the id of 'cover-image', or 'cover', or 'coverpage'.
       ['cover-image', 'cover', 'coverpage'].each { |cvr_id|
@@ -431,7 +431,11 @@ class Peregrin::Epub
                 }
               end
             }
-            xml.meta(:name => "cover", :content => "cover")
+            cover_cmpt = @component_lookup.detect { |c|
+              c[:href] == @book.cover
+            }
+            cover_id = cover_cmpt ? cover_cmpt[:id] : "cover"
+            xml.meta(:name => "cover", :content => cover_id)
           }
           xml.manifest {
             @component_lookup.each { |item|
