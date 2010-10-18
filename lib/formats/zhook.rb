@@ -272,7 +272,7 @@ class Peregrin::Zhook
     def outline_book(doc, cmpt_xpaths = [BODY_XPATH])
       unless defined?(@outliner) && @outliner
         @outliner = Peregrin::Outliner.new(doc)
-        @outliner.process(doc.root)
+        @outliner.process(doc.at_css('body'))
       end
 
       curse = lambda { |sxn|
