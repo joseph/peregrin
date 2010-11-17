@@ -62,7 +62,7 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     ook = Peregrin::Zhook.read('test/fixtures/zhooks/flat.zhook')
     book = ook.to_book(:componentize => true)
     assert_equal(
-      ["cover.html", "toc.html", "index.html", "part001.html", "part002.html"],
+      ["cover.html", "index.html", "part001.html", "part002.html", "toc.html"],
       book.components.collect { |cmpt| cmpt.keys.first }
     )
     assert_equal([

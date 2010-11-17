@@ -80,7 +80,7 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
   def test_to_book_rel_links
     ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
     book = ook.to_book(:componentize => true)
-    cmpt_html = book.components.last.values.first
+    cmpt_html = book.components[3].values.first
     doc = Nokogiri::HTML::Document.parse(cmpt_html)
     assert_equal(
       "cover.html",

@@ -146,6 +146,26 @@ class Peregrin::Zhook
 
 
     if options[:componentize]
+      # Table of Contents
+      doc = Nokogiri::HTML::Builder.new { |html|
+        curse = lambda { |children|
+          html.ol {
+            children.each { |sxn|
+              html.li {
+                html.a(sxn[:title], :href => sxn[:src])
+                curse.call(sxn[:children])  if sxn[:children]
+              }
+            }
+          }
+        }
+        curse.call(bk.contents)
+      }.doc
+      toc_doc = componentizer.generate_document(doc.root)
+      toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
+      # FIXME: this should set guide to "Table of Contents",
+      # guide_type to "toc" and linear to "no"
+      bk.components.push("toc.html" => htmlize(toc_doc))
+
       # List of Illustrations
       figures = index.css('figure[id], div.figure[id]')
       if figures.any?
@@ -167,28 +187,8 @@ class Peregrin::Zhook
         }.doc
         loi_doc = componentizer.generate_document(doc.root)
         loi_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-        bk.components.unshift("loi.html" => htmlize(loi_doc))
+        bk.components.push("loi.html" => htmlize(loi_doc))
       end
-
-      # Table of Contents
-      doc = Nokogiri::HTML::Builder.new { |html|
-        curse = lambda { |children|
-          html.ol {
-            children.each { |sxn|
-              html.li {
-                html.a(sxn[:title], :href => sxn[:src])
-                curse.call(sxn[:children])  if sxn[:children]
-              }
-            }
-          }
-        }
-        curse.call(bk.contents)
-      }.doc
-      toc_doc = componentizer.generate_document(doc.root)
-      toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-      # FIXME: this should set guide to "Table of Contents",
-      # guide_type to "toc" and linear to "no"
-      bk.components.unshift("toc.html" => htmlize(toc_doc))
 
       # Cover
       doc = Nokogiri::HTML::Builder.new { |html|
