@@ -42,19 +42,19 @@ class Peregrin::Zhook
     validate(path)
     book = Peregrin::Book.new
     Zip::Archive.open(path) { |zf|
-      book.components.push(INDEX_PATH => zf.read(INDEX_PATH))
+      book.add_component(INDEX_PATH, zf.read(INDEX_PATH))
       zf.each { |entry|
         ze = entry.name
-        book.media.push(ze)  unless ze == INDEX_PATH || entry.directory?
+        book.add_resource(ze)  unless ze == INDEX_PATH || entry.directory?
       }
     }
-    book.read_media_proc = lambda { |media_path|
+    book.read_resource_proc = lambda { |resource|
       Zip::Archive.open(path) { |zipfile|
-        zipfile.read(media_path)
+        zipfile.read(resource.src)
       }
     }
 
-    extract_metadata_from_index(book)
+    extract_properties_from_index(book)
 
     new(book)
   end
@@ -69,13 +69,14 @@ class Peregrin::Zhook
       stitch_components(@book)
     end
 
-    consolidate_metadata(@book)
+    consolidate_properties(@book)
 
-    @book.contents = outline_book(index)
+    @book.chapters = outline_book(index)
 
-    unless @book.cover || !@book.media.include?(COVER_PATH)
-      @book.cover = COVER_PATH
-    end
+    @book.cover ||= (
+      @book.resources.detect { |r| r.src == COVER_PATH } ||
+      @book.add_resource(COVER_PATH)
+    )
   end
 
 
@@ -85,10 +86,10 @@ class Peregrin::Zhook
     File.unlink(path)  if File.exists?(path)
     Zip::Archive.open(path, Zip::CREATE) { |zipfile|
       zipfile.add_buffer(INDEX_PATH, htmlize(index))
-      @book.media.each { |mpath|
-        zipfile.add_buffer(mpath, @book.read_media(mpath))
+      @book.resource.each { |resource|
+        zipfile.add_buffer(mpath, @book.read_resource(resource))
       }
-      unless @book.cover == COVER_PATH
+      unless @book.cover.src == COVER_PATH
         zipfile.add_buffer(COVER_PATH, to_png_data(@book.cover))
       end
     }
@@ -108,7 +109,6 @@ class Peregrin::Zhook
       '<link rel="start" href="cover.html" />' +
       '<link rel="contents" href="toc.html" />'
 
-
     # Componentizing.
     if options[:componentize]
       componentizer = Peregrin::Componentizer.new(index)
@@ -116,55 +116,62 @@ class Peregrin::Zhook
       bk.components = componentizer.component_xpaths.collect { |xpath|
         cmpt_xpaths.push(xpath)
         doc = componentizer.generate_component(xpath)
-        { uri_for_xpath(xpath, cmpt_xpaths) => doc }
+        Peregrin::Component.new(uri_for_xpath(xpath, cmpt_xpaths), doc)
       }
 
       # Add rel links and convert to html string
-      first_path = bk.components.first.keys.first
-      last_path = bk.components.last.keys.first
+      first_path = bk.components.first.src
+      last_path = bk.components.last.src
       boilerplate_rel_links <<
-        '<link rel="first" href="'+bk.components.first.keys.first+'" />' +
-        '<link rel="last" href="'+bk.components.last.keys.first+'" />'
+        '<link rel="first" href="'+bk.components.first.src+'" />' +
+        '<link rel="last" href="'+bk.components.last.src+'" />'
       bk.components.each_with_index { |cmpt, i|
-        path = cmpt.keys.first
-        doc = cmpt.values.first
-        head = doc.at_xpath(HEAD_XPATH)
-        prev_path = bk.components[i-1].keys.first if (i-1) >= 0
-        next_path = bk.components[i+1].keys.first if (i+1) < bk.components.size
+        head = cmpt.contents.at_xpath(HEAD_XPATH)
+        prev_path = bk.components[i-1].src  if (i-1) >= 0
+        next_path = bk.components[i+1].src  if (i+1) < bk.components.size
         head.add_child(boilerplate_rel_links)
-        head.add_child('<link rel="prev" href="'+prev_path+'" />') if prev_path
-        head.add_child('<link rel="next" href="'+next_path+'" />') if next_path
-        cmpt[path] = htmlize(doc)
+        head.add_child('<link rel="prev" href="'+prev_path+'" />')  if prev_path
+        head.add_child('<link rel="next" href="'+next_path+'" />')  if next_path
+        cmpt.contents = htmlize(cmpt.contents)
       }
     else
       cmpt_xpaths.push(BODY_XPATH)
-      bk.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
+      bk.components.clear
+      bk.add_component(uri_for_xpath(BODY_XPATH), htmlize(index))
     end
 
     # Outlining.
-    bk.contents = outline_book(index, cmpt_xpaths)
-
+    bk.chapters = outline_book(index, cmpt_xpaths)
 
     if options[:componentize]
       # Table of Contents
       doc = Nokogiri::HTML::Builder.new { |html|
         curse = lambda { |children|
+          parts = children.collect { |chp|
+            chp.empty_leaf? ? nil : [chp.title, chp.src, chp.children]
+          }.compact
+
           html.ol {
-            children.each { |sxn|
+            parts.each { |part|
               html.li {
-                html.a(sxn[:title], :href => sxn[:src])
-                curse.call(sxn[:children])  if sxn[:children]
+                html.a(part[0], :href => part[1])
+                curse.call(part[2])  if part[2].any?
               }
             }
-          }
+          }  if parts.any?
         }
-        curse.call(bk.contents)
+        curse.call(bk.chapters)
       }.doc
       toc_doc = componentizer.generate_document(doc.root)
       toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-      # FIXME: this should set guide to "Table of Contents",
-      # guide_type to "toc" and linear to "no"
-      bk.components.push("toc.html" => htmlize(toc_doc))
+      bk.add_component(
+        "toc.html",
+        htmlize(toc_doc),
+        nil,
+        :linear => "no",
+        :guide => "Table of Contents",
+        :guide_type => "toc"
+      )
 
       # List of Illustrations
       figures = index.css('figure[id], div.figure[id]')
@@ -187,20 +194,34 @@ class Peregrin::Zhook
         }.doc
         loi_doc = componentizer.generate_document(doc.root)
         loi_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-        bk.components.push("loi.html" => htmlize(loi_doc))
+        bk.add_component(
+          "loi.html",
+          htmlize(loi_doc),
+          nil,
+          :linear => "no",
+          :guide => "List of Illustrations",
+          :guide_type => "loi"
+        )
       end
 
       # Cover
       doc = Nokogiri::HTML::Builder.new { |html|
         html.div(:id => "cover") {
-          html.img(:src => bk.cover, :alt => bk.metadata["title"])
+          html.img(:src => bk.cover, :alt => bk.property_for("title"))
         }
       }.doc
       cover_doc = componentizer.generate_document(doc.root)
       cover_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-      # FIXME: this should set guide to "Cover",
-      # guide_type to "cover" and linear to "no"
-      bk.components.unshift("cover.html" => htmlize(cover_doc))
+      bk.components.unshift(
+        Peregrin::Component.new(
+          "cover.html",
+          htmlize(cover_doc),
+          nil,
+          :linear => "no",
+          :guide => "Cover",
+          :guide_type => "cover"
+        )
+      )
     end
 
     bk
@@ -211,7 +232,7 @@ class Peregrin::Zhook
 
     def index
       @index_document ||= Nokogiri::HTML::Document.parse(
-        @book.components.first.values.first
+        @book.components.first.contents
       )
     end
 
@@ -231,7 +252,7 @@ class Peregrin::Zhook
 
       book.components.shift
       while cmpt = book.components.shift
-        str = cmpt.values.first
+        str = cmpt.contents
         doc = Nokogiri::HTML::Document.parse(str)
         art = doc.at_xpath(BODY_XPATH)
         art.name = 'article'
@@ -248,23 +269,23 @@ class Peregrin::Zhook
           }
         end
       end
-      book.components = [{ uri_for_xpath(BODY_XPATH) => htmlize(index) }]
+      bk.components.clear
+      bk.add_component(uri_for_xpath(BODY_XPATH), htmlize(index))
     end
 
 
-    # Takes the metadata out of the book and ensures that there are matching
+    # Takes the properties out of the book and ensures that there are matching
     # meta tags in the index document.
     #
-    def consolidate_metadata(book)
+    def consolidate_properties(book)
       head = index.at_xpath('/html/head')
       head.css('meta[name]').each { |meta| meta.remove }
-      book.metadata.each_pair { |name, content|
-        content.split(/\n/).each { |val|
-          meta = Nokogiri::XML::Node.new('meta', index)
-          meta['name'] = name
-          meta['content'] = val
-          head.add_child(meta)
-        }
+      book.properties.each { |property|
+        # FIXME: handle properties with attributes?
+        meta = Nokogiri::XML::Node.new('meta', index)
+        meta['name'] = property.key
+        meta['content'] = property.value
+        head.add_child(meta)
       }
     end
 
@@ -276,16 +297,13 @@ class Peregrin::Zhook
       end
 
       curse = lambda { |sxn|
-        chapter = {}
-
-        chapter[:title] = sxn.heading_text  if sxn.heading_text
+        chapter = Peregrin::Chapter.new(sxn.heading_text)
 
         # identify any relevant child sections
         children = sxn.sections.collect { |ch|
           curse.call(ch) unless ch.empty?
         }.compact
-
-        chapter[:children] = children  if children.any?
+        chapter.children = children  if children.any?
 
         # Find the component parent
         n = sxn.node || sxn.heading
@@ -297,25 +315,15 @@ class Peregrin::Zhook
         if cmpt_uri
           # get URI for section
           sid = sxn.heading['id']  if sxn.heading
-          sid ||= sxn.node['id']  if sxn.node
-          cmpt_uri += "#"+sid  if sid && !sid.empty?
-          chapter[:src] = cmpt_uri
-
-          # if sid && !sid.empty?
-          #   chapter[:src] = (cmpt_uri + "#" + sid)
-          # elsif children.any?
-          #   chapter[:src] = cmpt_uri
-          # end
+          chapter.src = (cmpt_uri+"#"+sid)  if sid && !sid.empty?
         end
-        chapter
 
-        # Slight algorithm change: only show chapters with URIs and ids.
-        #chapter[:src] || children.any? ? chapter : nil
+        chapter
       }
 
-      result = curse.call(@outliner.result_root)[:children]
-      while result && result.length == 1 && result.first[:title].nil?
-        result = result.first[:children]
+      result = curse.call(@outliner.result_root).children
+      while result && result.length == 1 && result.first.title.nil?
+        result = result.first.children
       end
       result
     end
@@ -329,19 +337,19 @@ class Peregrin::Zhook
 
 
     def htmlize(doc)
-      "<!DOCTYPE html>\n"+ doc.root.to_html
+      "<!DOCTYPE html>\n"+doc.root.to_html
     end
 
 
-    def to_png_data(path)
-      return  if path.nil?
-      if File.extname(path) == ".png"
-        return @book.read_media(path)
+    def to_png_data(resource)
+      return  if resource.nil?
+      if File.extname(resource.src) == ".png"
+        return @book.read_resource(resource)
       else
         raise ConvertUtilityMissing  unless `which convert`
         out = nil
         IO.popen("convert - png:-", "r+") { |io|
-          io.write(@book.read_media(path))
+          io.write(@book.read_resource(resource))
           io.close_write
           out = io.read
         }
@@ -350,16 +358,12 @@ class Peregrin::Zhook
     end
 
 
-    def self.extract_metadata_from_index(book)
-      doc = Nokogiri::HTML::Document.parse(book.components.first.values.first)
+    def self.extract_properties_from_index(book)
+      doc = Nokogiri::HTML::Document.parse(book.components.first.contents)
       doc.css('html head meta[name]').each { |meta|
         name = meta['name']
         content = meta['content']
-        if book.metadata[name]
-          book.metadata[name] += "\n" + content
-        else
-          book.metadata[name] = content
-        end
+        book.add_property(name, content)
       }
     end
 

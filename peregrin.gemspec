@@ -1,6 +1,6 @@
 spec = Gem::Specification.new do |s|
   s.name = 'peregrin'
-  s.version = '1.0.0'
+  s.version = '1.1.0'
   s.summary = "Peregrin - ebook conversion"
   s.description = "Peregrin converts EPUBs, Zhooks and Ochooks."
   s.author = "Joseph Pearson"
@@ -21,4 +21,5 @@ spec = Gem::Specification.new do |s|
   ]
   s.add_dependency('nokogiri')
   s.add_dependency('zipruby')
+  s.add_dependency('mime-types')
 end

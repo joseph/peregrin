@@ -30,18 +30,18 @@ class Peregrin::Ochook < Peregrin::Zhook
     path = path.gsub(/\/$/, '')
     validate(path)
     book = Peregrin::Book.new
-    book.components.push(INDEX_PATH => IO.read(File.join(path, INDEX_PATH)))
+    book.add_component(INDEX_PATH, IO.read(File.join(path, INDEX_PATH)))
     Dir.glob(File.join(path, '**', '*')).each { |fpath|
       ex = [INDEX_PATH, MANIFEST_PATH]
       mpath = fpath.gsub(/^#{path}\//,'')
       unless File.directory?(fpath) || ex.include?(mpath)
-        book.media.push(mpath)
+        book.add_resource(mpath)
       end
     }
-    book.read_media_proc = lambda { |media_path|
-      IO.read(File.join(path, media_path))
+    book.read_resource_proc = lambda { |resource|
+      IO.read(File.join(path, resource.src))
     }
-    extract_metadata_from_index(book)
+    extract_properties_from_index(book)
     new(book)
   end
 
@@ -60,18 +60,20 @@ class Peregrin::Ochook < Peregrin::Zhook
     index_path = File.join(dir, INDEX_PATH)
     File.open(index_path, 'w') { |f| f << htmlize(index) }
 
-    # Media
-    @book.media.each { |mpath|
-      full_path = File.join(dir, mpath)
+    # Resources
+    @book.resources.each { |resource|
+      full_path = File.join(dir, resource.src)
       FileUtils.mkdir_p(File.dirname(full_path))
-      File.open(full_path, 'w') { |f| f << @book.read_media(mpath) }
+      File.open(full_path, 'w') { |f| f << @book.read_resource(resource) }
     }
 
     # Cover
     unless @book.cover == COVER_PATH
       cover_path = File.join(dir, COVER_PATH)
       File.open(cover_path, 'wb') { |f| f << to_png_data(@book.cover) }
-      @book.media << COVER_PATH  unless @book.media.include?(COVER_PATH)
+      unless @book.resources.detect { |r| r.src == COVER_PATH }
+        @book.add_resource(COVER_PATH)
+      end
     end
 
     # Manifest
@@ -89,8 +91,8 @@ class Peregrin::Ochook < Peregrin::Zhook
   protected
 
     def manifest
-      manifest = ["CACHE MANIFEST", "NETWORK:", "*", "CACHE:"]
-      @book.media.inject(manifest) { |mf, mpath| mf << mpath; mf }
+      manifest = ["CACHE MANIFEST", "", "NETWORK:", "*", "", "CACHE:", INDEX_PATH]
+      @book.resources.inject(manifest) { |mf, resource| mf << resource.src; mf }
     end
 
 

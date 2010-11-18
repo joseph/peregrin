@@ -6,11 +6,16 @@ module Peregrin
   require 'fileutils'
   require 'zipruby'
   require 'nokogiri'
+  require 'mime/types'
 
   # Require libs in this directory
   [
     "peregrin/zip_patch",
     "peregrin/book",
+    "peregrin/component",
+    "peregrin/resource",
+    "peregrin/chapter",
+    "peregrin/property",
     "peregrin/componentizer",
     "peregrin/outliner",
     "formats/epub",
@@ -83,14 +88,16 @@ module Peregrin
       ook = klass.read(path)
       book = ook.to_book
       puts "[#{klass::FORMAT}]"
-      puts "Components:"
-      book.components.each { |cmpt| puts "  #{cmpt.keys.first}" }
-      puts "Media: #{book.media.size}"
-      book.media.each { |mpath| puts "  #{mpath}" }
-      puts "Cover: #{book.cover}"
-      puts "Metadata:"
-      book.metadata.each_pair { |name, content|
-        puts "  #{name}: #{content}"  unless content.empty?
+      puts "\nCover\n  #{book.cover.src}"
+      puts "\nComponents [#{book.components.size}]"
+      book.components.each { |cmpt| puts "  #{cmpt.src}" }
+      puts "\nResources [#{book.resources.size}]"
+      book.resources.each { |res| puts "  #{res.src}" }
+      puts "\nChapters"
+      book.chapters.each { |chp| print_chapter_title(chp, "- ") }
+      puts "\nProperties [#{book.properties.size}]"
+      book.properties.each { |property|
+        puts "  #{property.key}: #{property.value}"  unless property.value.empty?
       }
       true
     end
@@ -110,6 +117,15 @@ module Peregrin
         remarks.each { |rm| puts(rm) }
         false
       end
+
+
+      def self.print_chapter_title(chp, padd)
+        puts "#{padd}#{chp.title}"
+        chp.children.each { |ch|
+          print_chapter_title(ch, "  "+padd)
+        }
+      end
+
 
 
     class UnknownFileFormat < RuntimeError
