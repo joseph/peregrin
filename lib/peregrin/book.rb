@@ -51,7 +51,7 @@ class Peregrin::Book
   def property_for(key)
     key = key.to_s
     prop = @properties.detect { |p| p.key == key }
-    prop.value
+    prop ? prop.value : nil
   end
 
 

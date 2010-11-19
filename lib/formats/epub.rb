@@ -12,15 +12,11 @@ class Peregrin::Epub
   OCF_PATH = "META-INF/container.xml"
   HTML5_TAGNAMES = %w[section nav article aside hgroup header footer figure figcaption] # FIXME: Which to divify? Which to leave as-is?
   MIMETYPE_MAP = {
-    '.gif' => 'image/gif',
-    '.jpg' => 'image/jpeg',
-    '.png' => 'image/png',
-    '.svg' => 'image/svg+xml',
-    '.html' => 'application/xhtml+xml',
+    '.xhtml' => 'application/xhtml+xml',
     '.odt' => 'application/x-dtbook+xml',
-    '.css' => 'text/css',
-    '.xml' => 'application/xml',
-    '.ncx' => 'application/x-dtbncx+xml'
+    '.odt' => 'application/x-dtbook+xml',
+    '.ncx' => 'application/x-dtbncx+xml',
+    '.epub' => 'application/epub+zip'
   }
   OEBPS = "OEBPS"
   NCX = 'content'
@@ -54,13 +50,9 @@ class Peregrin::Epub
 
 
   def initialize(book, epub_path = nil)
-    @component_lookup = []
-    @metadata_lookup = []
     @book = book
     if epub_path
       load_from_path(epub_path)
-    else
-      process_book
     end
   end
 
@@ -83,41 +75,6 @@ class Peregrin::Epub
 
   protected
 
-    def process_book
-      @book.components.each { |cmpt|
-        href = cmpt.keys.first
-        register_component(href, :linear => 'yes')
-      }
-
-      @book.media.each { |href|
-        register_component(href)
-      }
-
-      @book.metadata.each_pair { |name, content|
-        register_metadata(name, content)
-      }
-    end
-
-
-    def register_component(href, attributes = {})
-      cmpt = attributes.merge(:href => href)
-      cmpt[:id] ||= href.gsub(/[^\w]+/, '-').gsub(/^-+/, '')
-      cmpt[:mimetype] ||= MIMETYPE_MAP[File.extname(href)]
-      cmpt[:mimetype] ||= "application/unknown"
-      @component_lookup << cmpt
-      cmpt
-    end
-
-
-    def register_metadata(name, content, attributes = nil)
-      @metadata_lookup << {
-        :name => name,
-        :content => content,
-        :attributes => attributes
-      }
-    end
-
-
     #---------------------------------------------------------------------------
     # READING
     #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -126,16 +83,14 @@ class Peregrin::Epub
       docs = nil
       Zip::Archive.open(epub_path) { |zipfile|
         docs = load_config_documents(zipfile)
-        extract_metadata(docs[:opf])
+        extract_properties(docs[:opf])
         extract_components(zipfile, docs[:opf], docs[:opf_root])
         extract_chapters(zipfile, docs[:ncx])
         extract_cover(zipfile, docs)
       }
-      @book.read_media_proc = lambda { |media_path|
-        media_path = from_opf_root(docs[:opf_root], media_path)
-        Zip::Archive.open(epub_path) { |zipfile|
-          zipfile.read(media_path)
-        }
+      @book.read_resource_proc = lambda { |resource|
+        media_path = from_opf_root(docs[:opf_root], resource.src)
+        Zip::Archive.open(epub_path) { |zipfile| zipfile.read(media_path) }
       }
     end
 
@@ -180,13 +135,14 @@ class Peregrin::Epub
     end
 
 
-    def extract_metadata(opf_doc)
-      @book.metadata = opf_doc.at_xpath(
+    def extract_properties(opf_doc)
+      meta_elems = opf_doc.at_xpath(
         '//opf:metadata',
         NAMESPACES[:opf]
       ).children.select { |ch|
         ch.element?
-      }.inject({}) { |acc, elem|
+      }
+      meta_elems.each { |elem|
         if elem.name == "meta"
           name = elem['name']
           content = elem['content']
@@ -194,10 +150,12 @@ class Peregrin::Epub
           name = elem.name
           content = elem.content
         end
-        register_metadata(name, content, elem.attributes)
-
-        acc[name] = (acc[name] ? "#{acc[name]}\n#{content}" : content)
-        acc
+        atts = elem.attributes.inject({}) { |acc, pair|
+          key, attr = pair
+          acc[key] = attr.value  unless ["name", "content"].include?(key)
+          acc
+        }
+        @book.add_property(name, content, atts)
       }
     end
 
@@ -211,31 +169,27 @@ class Peregrin::Epub
         id = iref['idref']
         item = manifest.at_xpath("//opf:item[@id='#{id}']", NAMESPACES[:opf])
         href = item['href']
-        register_component(
+        linear = iref['linear'] != 'no'
+        @book.add_component(
           href,
+          zipfile.read(from_opf_root(opf_root, href)),
+          item['media-type'],
           :id => id,
-          :mimetype => item['media-type'],
-          :linear => iref['linear'] || 'yes'
+          :linear => linear ? "yes" : "no"
         )
-        if iref['linear'] != 'no'
-          cmpt_path = (opf_root== '.' ? href : from_opf_root(opf_root, href))
-          @book.components.push(href => zipfile.read(cmpt_path))
-        end
       }
 
       manifest.search('//opf:item', NAMESPACES[:opf]).each { |item|
         id = item['id']
         next  if item['media-type'] == MIMETYPE_MAP['.ncx']
-        next  if @component_lookup.any? { |cmpt| cmpt[:id] == id }
-        href = item['href']
-        register_component(href, :id => id, :mimetype => item['media-type'])
-        @book.media.push(href)
+        next  if @book.components.detect { |cmpt| cmpt.attributes[:id] == id }
+        @book.add_resource(item['href'], item['media-type'], :id => id)
       }
 
       opf_doc.search("//opf:guide/opf:reference", NAMESPACES[:opf]).each { |ref|
-        if it = @component_lookup.detect { |cmpt| cmpt[:href] == ref['href'] }
-          it[:guide_type] = ref['type']
-          it[:guide] = ref['title']
+        if it = @book.components.detect { |cmpt| cmpt.src == ref['href'] }
+          it.attributes[:guide_type] = ref['type']
+          it.attributes[:guide] = ref['title']
         end
       }
     end
@@ -243,55 +197,59 @@ class Peregrin::Epub
 
     def extract_chapters(zipfile, ncx_doc)
       curse = lambda { |point|
-        ch = {
-          :title => point.at_xpath('.//ncx:text', NAMESPACES[:ncx]).content,
-          :src => point.at_xpath('.//ncx:content', NAMESPACES[:ncx])['src']
-        }
+        chp = Peregrin::Chapter.new(
+          point.at_xpath('.//ncx:text', NAMESPACES[:ncx]).content,
+          point.at_xpath('.//ncx:content', NAMESPACES[:ncx])['src']
+        )
         point.children.each { |pt|
           next  unless pt.element? && pt.name == "navPoint"
-          ch[:children] ||= []
-          ch[:children].push(curse.call(pt))
+          chp.children.push(curse.call(pt))
         }
-        ch
+        chp
       }
       ncx_doc.at_xpath("//ncx:navMap", NAMESPACES[:ncx]).children.each { |pt|
         next  unless pt.element? && pt.name == "navPoint"
-        @book.contents.push(curse.call(pt))
+        @book.chapters.push(curse.call(pt))
       }
     end
 
 
     def extract_cover(zipfile, docs)
       @book.cover = nil
+      parts = @book.components + @book.resources
 
       # 1. Cover image referenced from metadata
-      if id = @book.metadata['cover']
-        cmpt = @component_lookup.detect { |c| c[:id] == id }
+      if id = @book.property_for('cover')
+        res = parts.detect { |r| r.attributes[:id] == id }
       end
 
       # 2. First image in a component listed in the guide as 'cover'
-      cmpt ||= @component_lookup.detect { |c| c[:guide_type] == 'cover' }
+      res ||= parts.detect { |r| r.attributes[:guide_type] == 'cover' }
 
       # 3. A component with the id of 'cover-image', or 'cover', or 'coverpage'.
       ['cover-image', 'cover', 'coverpage'].each { |cvr_id|
-        cmpt ||= @component_lookup.detect { |c| c[:id] == cvr_id }
+        res ||= parts.detect { |r| r.attributes[:id] == cvr_id }
       }
 
       # 4. First image in first component.
-      cmpt ||= @component_lookup.first
+      res ||= parts.first
 
-      return  unless cmpt
+      return  unless res
 
-      if cmpt[:mimetype].match(/^image\//)
-        @book.cover = cmpt[:href]
+      if res.media_type.match(/^image\//)
+        @book.cover = res
       else
-        path = from_opf_root(docs[:opf_root], cmpt[:href])
+        path = from_opf_root(docs[:opf_root], res.src)
         begin
           doc = Nokogiri::XML::Document.parse(zipfile.read(path))
+          src = nil
           if img = doc.at_css('img')
-            @book.cover = img['src']
+            src = img['src']
           elsif img = doc.at_xpath('//svg:image', NAMESPACES[:svg])
-            @book.cover = img['href']
+            src = img['href']
+          end
+          if src
+            @book.cover = @book.resources.detect { |r| r.src == src }
           end
         rescue
           #puts "Cover component is not an image or an XML document."
@@ -350,53 +308,50 @@ class Peregrin::Epub
             xml.meta(:name => "dtb:maxPageNumber", :content => "0")
           }
           xml.docTitle {
-            xml.text_(@book.metadata['title'])
+            xml.text_(@book.property_for('title'))
           }
           xml.navMap {
             x = 0
+            y = 0
             play_order = {}
             curse = lambda { |children|
               children.each { |chapter|
-                xml.navPoint(
-                  :id => "navPoint#{x+=1}",
-                  :playOrder => play_order[chapter[:src]] || x
-                ) {
-                  play_order[chapter[:src]] ||= x
-                  xml.navLabel { xml.text_(chapter[:title]) }
-                  xml.content(:src => chapter[:src])
-                  curse.call(chapter[:children])  if chapter[:children]
-                }
+                x = play_order[chapter.src] || (x + 1)
+                xml.navPoint(:id => "navPoint#{y+=1}", :playOrder => x) {
+                  play_order[chapter.src] ||= x
+                  xml.navLabel { xml.text_(chapter.title) }
+                  xml.content(:src => chapter.src)
+                  curse.call(chapter.children)  if chapter.children.any?
+                }  unless chapter.empty_leaf?
               }
             }
-            curse.call(@book.contents)
+            curse.call(@book.chapters)
           }
         }
       }
-      register_component(ncx_path, :id => NCX)
+      @ncx_path = ncx_path
     end
 
 
     def write_components
       # Linear components.
       @book.components.each { |cmpt|
-        cmpt.each_pair { |path, str|
-          doc = Nokogiri::HTML::Document.parse(str)
-          html = root_to_xhtml(doc.root)
-          File.open(working_dir(OEBPS, path), 'w') { |f| f.write(html) }
-          id = File.basename(path, File.extname(path))
-        }
+        cmpt.attributes[:id] ||= File.basename(cmpt.src, File.extname(cmpt.src))
+
+        doc = Nokogiri::HTML::Document.parse(cmpt.contents)
+        html = root_to_xhtml(doc.root)
+        File.open(working_dir(OEBPS, cmpt.src), 'w') { |f| f.write(html) }
       }
 
-      # Other components (@book.media)
-      @book.media.each { |media_path|
-        id = (
-          "#{File.dirname(media_path)}-" +
-          "#{File.basename(media_path, File.extname(media_path))}"
-        ).gsub(/[^\w]+/, '-')
-        # FIXME: id must begin with an alpha character, and must be unique.
-        dest_path = working_dir(OEBPS, media_path)
+      # Other components (@book.resources)
+      @book.resources.each { |res|
+        res.attributes[:id] ||= (
+          "#{File.dirname(res.src)}-#{File.basename(res.src)}"
+        ).gsub(/[^\w]+/, '-').gsub(/^-+/, '').gsub(/^(\d)/, 'a-\1')
+
+        dest_path = working_dir(OEBPS, res.src)
         FileUtils.mkdir_p(File.dirname(dest_path))
-        @book.copy_media_to(media_path, dest_path)
+        @book.copy_resource_to(res, dest_path)
       }
     end
 
@@ -410,9 +365,9 @@ class Peregrin::Epub
           'unique-identifier' => 'bookid'
         ) {
           xml.metadata {
-            xml['dc'].title(@book.metadata['title'] || 'Untitled')
+            xml['dc'].title(@book.property_for('title') || 'Untitled')
             xml['dc'].identifier(unique_identifier, :id => 'bookid')
-            xml['dc'].language(@book.metadata['language'] || 'en')
+            xml['dc'].language(@book.property_for('language') || 'en')
             [
               'creator',
               'subject',
@@ -425,38 +380,54 @@ class Peregrin::Epub
               'coverage',
               'rights'
             ].each { |dc|
-              if val = @book.metadata[dc]
+              if val = @book.property_for(dc)
                 val.split(/\n/).each { |v|
                   xml['dc'].send(dc, v)  if v
                 }
               end
             }
-            cover_cmpt = @component_lookup.detect { |c|
-              c[:href] == @book.cover
-            }
-            cover_id = cover_cmpt ? cover_cmpt[:id] : "cover"
+            cover_id = @book.cover.attributes[:id] || "cover"
             xml.meta(:name => "cover", :content => cover_id)
           }
           xml.manifest {
-            @component_lookup.each { |item|
+            @book.components.each { |item|
               xml.item(
-                'id' => item[:id],
-                'href' => item[:href],
-                'media-type' => item[:mimetype]
+                'id' => item.attributes[:id],
+                'href' => item.src,
+                'media-type' => MIMETYPE_MAP['.xhtml']
+              )
+            }
+            @book.resources.each { |item|
+              xml.item(
+                'id' => item.attributes[:id],
+                'href' => item.src,
+                'media-type' => item.media_type
+              )
+            }
+            xml.item(
+              'id' => NCX,
+              'href' => @ncx_path,
+              'media-type' => MIMETYPE_MAP['.ncx']
+            )
+          }
+          xml.spine(:toc => NCX) {
+            @book.components.each { |item|
+              xml.itemref(
+                :idref => item.attributes[:id],
+                :linear => item.attributes[:linear] || 'yes'
               )
             }
           }
-          xml.spine(:toc => NCX) {
-            @component_lookup.select { |item| item[:linear] }.each { |item|
-              xml.itemref(:idref => item[:id], :linear => item[:linear])
-            }
-          }
           xml.guide {
-            @component_lookup.select { |it| it[:guide] }.each { |guide_item|
+            guide_items = @book.components.select { |it| it.attributes[:guide] }
+            guide_items.each { |guide_item|
               xml.reference(
-                :type => guide_item[:guide_type] || guide_item[:id],
-                :title => guide_item[:guide],
-                :href => guide_item[:href]
+                :type => (
+                  guide_item.attributes[:guide_type] ||
+                  guide_item.attributes[:id]
+                ),
+                :title => guide_item.attributes[:guide],
+                :href => guide_item.src
               )
             }
           }
@@ -468,7 +439,7 @@ class Peregrin::Epub
     def zip_it_up(filename)
       path = working_dir("..", filename)
       File.open(working_dir("mimetype"), 'w') { |f|
-        f.write('application/epub+zip')
+        f.write(MIMETYPE_MAP['.epub'])
       }
       File.unlink(path)  if File.exists?(path)
       cmd = [
@@ -482,7 +453,7 @@ class Peregrin::Epub
 
 
     def unique_identifier
-      @uid ||= @book.metadata['bookid'] || random_string(12)
+      @uid ||= @book.property_for('bookid') || random_string(12)
     end
 
 
@@ -502,14 +473,14 @@ class Peregrin::Epub
       max = 0
       curr = 0
       curse = lambda { |children|
-        children.each { |ch|
+        children.each { |chp|
           curr += 1
           max = [curr, max].max
-          curse.call(ch[:children])  if ch[:children]
+          curse.call(chp.children)  if chp.children.any?
           curr -= 1
         }
       }
-      curse.call(@book.contents)
+      curse.call(@book.chapters)
       max
     end
 
@@ -527,7 +498,7 @@ class Peregrin::Epub
 
     def build_html_file(path)
       @shell_document ||= Nokogiri::HTML::Document.parse(
-        @book.components.first.values.first
+        @book.components.first.contents
       )
       bdy = @shell_document.at_xpath('/html/body')
       bdy.children.remove

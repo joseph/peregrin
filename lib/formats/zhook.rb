@@ -86,8 +86,8 @@ class Peregrin::Zhook
     File.unlink(path)  if File.exists?(path)
     Zip::Archive.open(path, Zip::CREATE) { |zipfile|
       zipfile.add_buffer(INDEX_PATH, htmlize(index))
-      @book.resource.each { |resource|
-        zipfile.add_buffer(mpath, @book.read_resource(resource))
+      @book.resources.each { |resource|
+        zipfile.add_buffer(resource.src, @book.read_resource(resource))
       }
       unless @book.cover.src == COVER_PATH
         zipfile.add_buffer(COVER_PATH, to_png_data(@book.cover))
@@ -162,16 +162,18 @@ class Peregrin::Zhook
         }
         curse.call(bk.chapters)
       }.doc
-      toc_doc = componentizer.generate_document(doc.root)
-      toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
-      bk.add_component(
-        "toc.html",
-        htmlize(toc_doc),
-        nil,
-        :linear => "no",
-        :guide => "Table of Contents",
-        :guide_type => "toc"
-      )
+      if doc.root
+        toc_doc = componentizer.generate_document(doc.root)
+        toc_doc.at_xpath(HEAD_XPATH).add_child(boilerplate_rel_links)
+        bk.add_component(
+          "toc.html",
+          htmlize(toc_doc),
+          nil,
+          :linear => "no",
+          :guide => "Table of Contents",
+          :guide_type => "toc"
+        )
+      end
 
       # List of Illustrations
       figures = index.css('figure[id], div.figure[id]')
@@ -207,7 +209,7 @@ class Peregrin::Zhook
       # Cover
       doc = Nokogiri::HTML::Builder.new { |html|
         html.div(:id => "cover") {
-          html.img(:src => bk.cover, :alt => bk.property_for("title"))
+          html.img(:src => bk.cover.src, :alt => bk.property_for("title"))
         }
       }.doc
       cover_doc = componentizer.generate_document(doc.root)
@@ -269,8 +271,8 @@ class Peregrin::Zhook
           }
         end
       end
-      bk.components.clear
-      bk.add_component(uri_for_xpath(BODY_XPATH), htmlize(index))
+      book.components.clear
+      book.add_component(uri_for_xpath(BODY_XPATH), htmlize(index))
     end
 
 
@@ -315,7 +317,8 @@ class Peregrin::Zhook
         if cmpt_uri
           # get URI for section
           sid = sxn.heading['id']  if sxn.heading
-          chapter.src = (cmpt_uri+"#"+sid)  if sid && !sid.empty?
+          cmpt_uri += "#"+sid  if sid && !sid.empty?
+          chapter.src = cmpt_uri
         end
 
         chapter

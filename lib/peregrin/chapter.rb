@@ -7,7 +7,7 @@ class Peregrin::Chapter
   attr_accessor :title, :src, :children
 
   def initialize(title, src = nil)
-    @title = title
+    @title = title.gsub(/[\r\n]/,' ')  if title
     @src = src
     @children = []
   end

@@ -12,8 +12,8 @@ module Peregrin
   [
     "peregrin/zip_patch",
     "peregrin/book",
-    "peregrin/component",
     "peregrin/resource",
+    "peregrin/component",
     "peregrin/chapter",
     "peregrin/property",
     "peregrin/componentizer",
