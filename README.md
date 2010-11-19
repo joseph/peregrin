@@ -20,6 +20,7 @@ Required Ruby gems:
 
 * zipruby
 * nokogiri
+* mime-types
 
 
 ## Peregrin from the command-line
@@ -30,7 +31,14 @@ output an analysis.
 
     $ peregrin strunk.epub
     [EPUB]
-    Components:
+
+    Cover
+      images/cover.png
+
+    Components [10]
+      cover.xml
+      title.xml
+      about.xml
       main0.xml
       main1.xml
       main2.xml
@@ -38,30 +46,27 @@ output an analysis.
       main4.xml
       main5.xml
       main6.xml
-      main7.xml
-      main8.xml
-      main9.xml
-      main10.xml
-      main11.xml
-      main12.xml
-      main13.xml
-      main14.xml
-      main15.xml
-      main16.xml
-      main17.xml
-      main18.xml
-      main19.xml
-      main20.xml
-      main21.xml
-    Media: 1
+
+    Resources [2]
       css/main.css
-    Cover: cover.png
-    Metadata:
+      images/cover.png
+
+    Chapters
+    - Title
+    - About
+    - Chapter 1 - Introductory
+    - Chapter 2 - Elementary Rules of Usage
+    - Chapter 3 - Elementary Principles of Composition
+    - Chapter 4 - A Few Matters of Form
+    - Chapter 5 - Words and Expressions Commonly Misused
+    - Chapter 6 - Words Commonly Misspelled
+
+    Properties [5]
       title: The Elements of Style
-      creator: William Strunk Jr.
-      cover: cover
+      identifier: urn:uuid:6f82990c-9394-11df-920d-001cc0a62c0b
       language: en
-      identifier: 8102537c96
+      creator: William Strunk Jr.
+      subject: Non-Fiction
 
 Note that file type detection is quite naive — it just uses the path extension,
 and if the extension is not .zhook or .epub, it assumes the path is an
@@ -72,18 +77,33 @@ two paths to the utility; it will convert from the first to the second.
 
     $ peregrin strunk.epub strunk.zhook
     [Zhook]
-    Components:
+    Cover
+      cover.png
+
+    Components [1]
       index.html
-    Media: 2
+
+    Resources [2]
       css/main.css
       cover.png
-    Cover: cover.png
-    Metadata:
+
+    Chapters
+    - Title
+    - About
+    - Chapter 1 - Introductory
+    - Chapter 2 - Elementary Rules of Usage
+    - Chapter 3 - Elementary Principles of Composition
+    - Chapter 4 - A Few Matters of Form
+    - Chapter 5 - Words and Expressions Commonly Misused
+    - Chapter 6 - Words Commonly Misspelled
+
+    Properties [5]
       title: The Elements of Style
-      creator: William Strunk Jr.
-      cover: cover
+      identifier: urn:uuid:6f82990c-9394-11df-920d-001cc0a62c0b
       language: en
-      identifier: e4603149df00
+      creator: William Strunk Jr.
+      subject: Non-Fiction
+
 
 ## Library usage
 
@@ -110,11 +130,11 @@ Here's what a conversion routine might look like:
 Between the three supported formats, there is an abstracted concept of "book"
 data, which holds the following information:
 
-* components - an array of files that make up the linear content
-* contents - an array of chapters (with titles, hrefs and children)
-* metadata - a hash of key/value pairs
-* media - an array of files contained in the ebook, other than components
-* cover - the media file that should be used as the cover of the ebook
+* components - an array of Components that make up the linear content
+* chapters - an array of Chapters (with title, src and children)
+* properties - an array of Property metadata tuples (key/value + attributes)
+* resources - an array of Resources contained in the ebook, other than components
+* cover - the Resource that should be used as the cover of the ebook
 
 There will probably be some changes to the shape of this data over the
 development of Peregrin, to ensure that the Book interchange object retains all
