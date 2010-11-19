@@ -19,17 +19,18 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
     ook = Peregrin::Ochook.read('test/fixtures/ochooks/basic')
     book = ook.to_book
     assert_equal(1, book.components.length)
-    assert_equal("index.html", book.components.first.keys.first)
-    assert_equal(['cover.png'], book.media)
-    assert_equal("A Basic Ochook", book.metadata['title'])
-    assert_equal([{
-      :title => "A Basic Ochook",
-      :src => "index.html",
-      :children => [
-        { :title => "Part One", :src => "index.html#part1" },
-        { :title => "Part Two", :src => "index.html#part2" }
-      ]
-    }], book.contents)
+    assert_equal("index.html", book.components.first.src)
+    assert_equal(['cover.png'], book.resources.collect { |res| res.src })
+    assert_equal("A Basic Ochook", book.property_for('title'))
+    assert_equal(1, book.chapters.size)
+
+    chp = book.chapters.first
+    assert_equal("A Basic Ochook", chp.title)
+    assert_equal("index.html", chp.src)
+    assert_equal("Part One", chp.children[0].title)
+    assert_equal("index.html#part1", chp.children[0].src)
+    assert_equal("Part Two", chp.children[1].title)
+    assert_equal("index.html#part2", chp.children[1].src)
   end
 
 
@@ -48,8 +49,8 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
     ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
     book = ook.to_book(:componentize => true)
     cov_html = book.components.detect { |cmpt|
-      cmpt.keys.include?("cover.html")
-    }["cover.html"]
+      cmpt.src == "cover.html"
+    }.contents
     doc = Nokogiri::HTML::Document.parse(cov_html)
     assert_equal('cover.png', doc.at_xpath('/html/body/div/img')['src'])
   end
@@ -58,9 +59,7 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
   def test_to_book_toc_html
     ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
     book = ook.to_book(:componentize => true)
-    toc_html = book.components.detect { |cmpt|
-      cmpt.keys.include?("toc.html")
-    }["toc.html"]
+    toc_html = book.components.detect { |cmpt| cmpt.src == "toc.html" }.contents
     doc = Nokogiri::HTML::Document.parse(toc_html)
     assert_equal(3, doc.xpath('/html/body/ol/li').size)
   end
@@ -69,9 +68,7 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
   def test_to_book_loi_html
     ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
     book = ook.to_book(:componentize => true)
-    loi_html = book.components.detect { |cmpt|
-      cmpt.keys.include?("loi.html")
-    }["loi.html"]
+    loi_html = book.components.detect { |cmpt| cmpt.src == "loi.html" }.contents
     doc = Nokogiri::HTML::Document.parse(loi_html)
     assert_equal(2, doc.xpath('/html/body/ol/li').size)
   end
@@ -80,7 +77,7 @@ class Peregrin::Tests::OchookTest < Test::Unit::TestCase
   def test_to_book_rel_links
     ook = Peregrin::Ochook.read("test/fixtures/ochooks/illustrated")
     book = ook.to_book(:componentize => true)
-    cmpt_html = book.components[3].values.first
+    cmpt_html = book.components[3].contents
     doc = Nokogiri::HTML::Document.parse(cmpt_html)
     assert_equal(
       "cover.html",

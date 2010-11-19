@@ -187,7 +187,7 @@ class Peregrin::Epub
       }
 
       opf_doc.search("//opf:guide/opf:reference", NAMESPACES[:opf]).each { |ref|
-        if it = @book.components.detect { |cmpt| cmpt.src == ref['href'] }
+        if it = @book.all_files.detect { |cmpt| cmpt.src == ref['href'] }
           it.attributes[:guide_type] = ref['type']
           it.attributes[:guide] = ref['title']
         end
@@ -216,23 +216,22 @@ class Peregrin::Epub
 
     def extract_cover(zipfile, docs)
       @book.cover = nil
-      parts = @book.components + @book.resources
 
       # 1. Cover image referenced from metadata
       if id = @book.property_for('cover')
-        res = parts.detect { |r| r.attributes[:id] == id }
+        res = @book.all_files.detect { |r| r.attributes[:id] == id }
       end
 
       # 2. First image in a component listed in the guide as 'cover'
-      res ||= parts.detect { |r| r.attributes[:guide_type] == 'cover' }
+      res ||= @book.all_files.detect { |r| r.attributes[:guide_type] == 'cover' }
 
       # 3. A component with the id of 'cover-image', or 'cover', or 'coverpage'.
       ['cover-image', 'cover', 'coverpage'].each { |cvr_id|
-        res ||= parts.detect { |r| r.attributes[:id] == cvr_id }
+        res ||= @book.all_files.detect { |r| r.attributes[:id] == cvr_id }
       }
 
       # 4. First image in first component.
-      res ||= parts.first
+      res ||= @book.all_files.first
 
       return  unless res
 
@@ -386,8 +385,10 @@ class Peregrin::Epub
                 }
               end
             }
-            cover_id = @book.cover.attributes[:id] || "cover"
-            xml.meta(:name => "cover", :content => cover_id)
+            if @book.cover
+              cover_id = @book.cover.attributes[:id] || "cover"
+              xml.meta(:name => "cover", :content => cover_id)
+            end
           }
           xml.manifest {
             @book.components.each { |item|

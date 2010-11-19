@@ -7,8 +7,8 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     epub = Peregrin::Epub.new(strunk_book)
     book = epub.to_book
     assert_equal(22, book.components.length)
-    assert_equal(6, book.contents.length)
-    assert_equal("William Strunk Jr.", book.metadata['creator'])
+    assert_equal(6, book.chapters.length)
+    assert_equal("William Strunk Jr.", book.property_for('creator'))
   end
 
 
@@ -37,8 +37,7 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
 
   def test_extracting_metadata
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
-    metadata = epub.to_book.metadata
-    assert_equal("The Elements of Style", metadata['title'])
+    assert_equal("The Elements of Style", epub.to_book.property_for('title'))
   end
 
 
@@ -47,11 +46,11 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     book = epub.to_book
     assert_equal(
       ["cover.xml", "title.xml", "about.xml", "main0.xml", "main1.xml", "main2.xml", "main3.xml", "main4.xml", "main5.xml", "main6.xml", "main7.xml", "main8.xml", "main9.xml", "main10.xml", "main11.xml", "main12.xml", "main13.xml", "main14.xml", "main15.xml", "main16.xml", "main17.xml", "main18.xml", "main19.xml", "main20.xml", "main21.xml", "similar.xml", "feedbooks.xml"],
-      book.components.collect { |cmpt| cmpt.keys.first }
+      book.components.collect { |cmpt| cmpt.src }
     )
     assert_equal(
       ["css/page.css", "css/feedbooks.css", "css/title.css", "css/about.css", "css/main.css", "images/logo-feedbooks-tiny.png", "images/logo-feedbooks.png", "images/cover.png"],
-      book.media
+      book.resources.collect { |res| res.src }
     )
   end
 
@@ -65,29 +64,29 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
   def test_extracting_cover
     # Cover image referenced from metadata
     epub = Peregrin::Epub.read("test/fixtures/epubs/covers/cover_in_meta.epub")
-    assert_equal("cover.png", epub.to_book.cover)
+    assert_equal("cover.png", epub.to_book.cover.src)
 
     # First image in a component listed in the guide as 'cover'
     epub = Peregrin::Epub.read("test/fixtures/epubs/covers/cover_in_guide.epub")
-    assert_equal("cover.png", epub.to_book.cover)
+    assert_equal("cover.png", epub.to_book.cover.src)
 
     # A component with the id of 'cover-image'.
     epub = Peregrin::Epub.read(
       "test/fixtures/epubs/covers/cover-image_in_manifest.epub"
     )
-    assert_equal("cover.png", epub.to_book.cover)
+    assert_equal("cover.png", epub.to_book.cover.src)
 
     # First image in component with the id of 'cover'.
     epub = Peregrin::Epub.read(
       "test/fixtures/epubs/covers/cover_in_manifest.epub"
     )
-    assert_equal("cover.png", epub.to_book.cover)
+    assert_equal("cover.png", epub.to_book.cover.src)
 
     # First image in first component.
     epub = Peregrin::Epub.read(
       "test/fixtures/epubs/covers/cover_in_first_cmpt.epub"
     )
-    assert_equal("cover.png", epub.to_book.cover)
+    assert_equal("cover.png", epub.to_book.cover.src)
   end
 
 
@@ -107,47 +106,44 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
       book = Peregrin::Book.new
       0.upto(21) { |i|
         path = "main#{i}.xml"
-        book.components.push(
-          path => IO.read("test/fixtures/epubs/strunk/OPS/#{path}")
+        book.add_component(
+          path,
+          IO.read("test/fixtures/epubs/strunk/OPS/#{path}")
         )
       }
-      book.contents = [
-        {
-          :title => "Chapter 1 - Introductory",
-          :src => "main0.xml"
-        },
-        {
-          :title => "Chapter 2 - Elementary Rules of Usage",
-          :src => "main1.xml",
-          :children => [{
-            :title => "1. Form the possessive singular of nounds with 's",
-            :src => "main1.xml#section_98344"
-          }]
-        },
-        {
-          :title => "Chapter 3 - Elementary Principles of Composition",
-          :src => "main9.xml"
-        },
-        {
-          :title => "Chapter 4 - A Few Matters of Form",
-          :src => "main19.xml"
-        },
-        {
-          :title => "Chapter 5 - Words and Expressions Commonly Misused",
-          :src => "main20.xml"
-        },
-        {
-          :title => "Chapter 6 - Words Commonly Misspelled",
-          :src => "main21.xml"
-        }
-      ]
-      book.metadata = {
-        "title" => "The Elements of Style",
-        "creator" => "William Strunk Jr."
-      }
-      book.media = ["css/main.css"]
-      book.read_media_proc = lambda { |mpath|
-        IO.read("test/fixtures/epubs/strunk/OPS/#{mpath}")
+      chp = book.add_chapter(
+        "Chapter 1 - Introductory",
+        "main0.xml"
+      )
+      chp = book.add_chapter(
+        "Chapter 2 - Elementary Rules of Usage",
+        "main1.xml"
+      )
+      chp.add_child(
+        "1. Form the possessive singular of nounds with 's",
+        "main1.xml#section_98344"
+      )
+      chp = book.add_chapter(
+        "Chapter 3 - Elementary Principles of Composition",
+        "main9.xml"
+      )
+      chp = book.add_chapter(
+        "Chapter 4 - A Few Matters of Form",
+        "main19.xml"
+      )
+      chp = book.add_chapter(
+        "Chapter 5 - Words and Expressions Commonly Misused",
+        "main20.xml"
+      )
+      chp = book.add_chapter(
+        "Chapter 6 - Words Commonly Misspelled",
+        "main21.xml"
+      )
+      book.add_property("title", "The Elements of Style")
+      book.add_property("creator", "William Strunk Jr.")
+      book.add_resource("css/main.css")
+      book.read_resource_proc = lambda { |resource|
+        IO.read("test/fixtures/epubs/strunk/OPS/#{resource.src}")
       }
       book
     end

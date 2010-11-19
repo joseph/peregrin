@@ -28,23 +28,28 @@ class Peregrin::Book
   end
 
 
+  def all_files
+    @components + @resources
+  end
+
+
   def add_component(*args)
-    @components.push(Peregrin::Component.new(*args))
+    @components.push(Peregrin::Component.new(*args)).last
   end
 
 
   def add_resource(*args)
-    @resources.push(Peregrin::Resource.new(*args))
+    @resources.push(Peregrin::Resource.new(*args)).last
   end
 
 
   def add_chapter(*args)
-    @chapters.push(Peregrin::Chapter.new(*args))
+    @chapters.push(Peregrin::Chapter.new(*args)).last
   end
 
 
   def add_property(*args)
-    @properties.push(Peregrin::Property.new(*args))
+    @properties.push(Peregrin::Property.new(*args)).last
   end
 
 

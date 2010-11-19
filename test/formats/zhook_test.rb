@@ -44,17 +44,17 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     ook = Peregrin::Zhook.read('test/fixtures/zhooks/2level.zhook')
     book = ook.to_book
     assert_equal(1, book.components.length)
-    assert_equal("index.html", book.components.first.keys.first)
-    assert_equal(['cover.png'], book.media)
-    assert_equal("A Two-Level Zhook", book.metadata['title'])
-    assert_equal([{
-      :title => "A Two-Level Zhook",
-      :src => "index.html",
-      :children => [
-        { :title => "Part One", :src => "index.html#part1" },
-        { :title => "Part Two", :src => "index.html#part2" }
-      ]
-    }], book.contents)
+    assert_equal("index.html", book.components.first.src)
+    assert_equal(['cover.png'], book.resources.collect { |res| res.src })
+    assert_equal("A Two-Level Zhook", book.property_for('title'))
+    assert_equal(1, book.chapters.size)
+    chp = book.chapters.first
+    assert_equal("A Two-Level Zhook", chp.title)
+    assert_equal("index.html", chp.src)
+    assert_equal("Part One", chp.children[0].title)
+    assert_equal("index.html#part1", chp.children[0].src)
+    assert_equal("Part Two", chp.children[1].title)
+    assert_equal("index.html#part2", chp.children[1].src)
   end
 
 
@@ -63,72 +63,69 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     book = ook.to_book(:componentize => true)
     assert_equal(
       ["cover.html", "index.html", "part001.html", "part002.html", "toc.html"],
-      book.components.collect { |cmpt| cmpt.keys.first }
+      book.components.collect { |cmpt| cmpt.src }
     )
-    assert_equal([
-      { :title => "A Flat Zhook", :src => "index.html" },
-      { :title => "Part One", :src => "part001.html#part1" },
-      { :title => "Part Two", :src => "part002.html#part2" }
-    ], book.contents)
+    assert_equal(3, book.chapters.size)
+    assert_equal("A Flat Zhook", book.chapters[0].title)
+    assert_equal("Part One", book.chapters[1].title)
+    assert_equal("Part Two", book.chapters[2].title)
   end
 
 
   def test_2_level_componentization
     ook = Peregrin::Zhook.read('test/fixtures/zhooks/2level.zhook')
     book = ook.to_book(:componentize => true)
-    assert_equal([{
-      :title => "A Two-Level Zhook",
-      :src => "index.html",
-      :children => [
-        { :title => "Part One", :src => "part001.html#part1" },
-        { :title => "Part Two", :src => "part002.html#part2" }
-      ]
-    }], book.contents)
+    assert_equal(1, book.chapters.size)
+    chp = book.chapters.first
+    assert_equal("A Two-Level Zhook", chp.title)
+    assert_equal("index.html", chp.src)
+    assert_equal("Part One", chp.children[0].title)
+    assert_equal("part001.html#part1", chp.children[0].src)
+    assert_equal("Part Two", chp.children[1].title)
+    assert_equal("part002.html#part2", chp.children[1].src)
   end
 
 
   def test_3_level_componentization
     ook = Peregrin::Zhook.read('test/fixtures/zhooks/3level.zhook')
     book = ook.to_book(:componentize => true)
-    assert_equal([{
-      :title => "A Three-Level Zhook",
-      :src => "index.html",
-      :children => [
-        {
-          :title => "Part One",
-          :src => "part001.html#part1",
-          :children => [
-            { :title => "Sub-part One Dot Two", :src => "part002.html" }
-          ]
-        },
-        {
-          :title => "Part Two",
-          :src => "part003.html#part2",
-          :children => [
-            { :title => "Sub-part Two Dot Two", :src => "part004.html" }
-          ]
-        }
-      ]
-    }], book.contents)
+    assert_equal(1, book.chapters.size)
+    chp = book.chapters.first
+    assert_equal("A Three-Level Zhook", chp.title)
+    assert_equal("index.html", chp.src)
+    assert_equal("Part One", chp.children[0].title)
+    assert_equal("part001.html#part1", chp.children[0].src)
+    assert_equal("Part Two", chp.children[1].title)
+    assert_equal("part003.html#part2", chp.children[1].src)
+    assert_equal("Sub-part One Dot Two", chp.children[0].children[0].title)
+    assert_equal("part002.html", chp.children[0].children[0].src)
+    assert_equal("Sub-part Two Dot Two", chp.children[1].children[0].title)
+    assert_equal("part004.html", chp.children[1].children[0].src)
   end
 
 
   def test_stitching_components
     book = Peregrin::Book.new
-    book.components = [
-      { "index.html" => %Q`
-        <html><head><title>Index</title></head><body>
+    book.add_component(
+      "index.html",
+      %Q`
+        <html><head><title>Index</title>
+        <meta http-equiv="Content-Type" content="text/html;charset=US-ASCII">
+        </head><body>
         <p>A para</p></body></html>
-        ` },
-      { "foo.html" => %Q`
+      `
+    )
+    book.add_component(
+      "foo.html",
+      %Q`
         <html><head><title>Foo</title>
         <link rel="stylesheet" href="main.css" />
         </head><body>
         <hgroup><h1>Part Foo</h1><h2>Peregrin Took</h2></hgroup>
         <cite>A cite tag</cite></body></html>
-        ` },
-      { "garply.html" => %Q`<p>A floating para.</p>` }
-    ]
+      `
+    )
+    book.add_component("garply.html", %Q`<p>A floating para.</p>`)
     ook = Peregrin::Zhook.new(book)
     assert_equal(
       whitewash(
@@ -136,6 +133,7 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
         <!DOCTYPE html>
         <html><head>
           <title>Index</title>
+          <meta http-equiv="Content-Type" content="text/html;charset=US-ASCII">
           <link rel="stylesheet" href="main.css">
         </head><body>
         <article>
@@ -150,31 +148,32 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
         </article>
         </body></html>`
       ),
-      whitewash(ook.to_book.components.first.values.first)
+      whitewash(ook.to_book.components.first.contents)
     )
   end
 
 
   def test_consolidating_metadata
     book = Peregrin::Book.new
-    book.components = [{
-      "index.html" =>
-        "<html><head><title>Foo</title></head><body><p>Foo</p></body></html>"
-    }]
-    book.metadata = {
-      "title" => "Foo",
-      "creator" => "Peregrin Took"
-    }
+    book.add_component(
+      "index.html",
+      "<html><head><title>Foo</title>" +
+      "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=US-ASCII\">" +
+      "</head><body><p>Foo</p></body></html>"
+    )
+    book.add_property("title", "Foo")
+    book.add_property("creator", "Peregrin Took")
     ook = Peregrin::Zhook.new(book)
     assert_equal(
       whitewash(%Q`
         <!DOCTYPE html>
         <html><head><title>Foo</title>
+        <meta http-equiv="Content-Type" content="text/html;charset=US-ASCII">
         <meta name="title" content="Foo">
         <meta name="creator" content="Peregrin Took">
         </head><body><p>Foo</p></body></html>
       `),
-      whitewash(ook.to_book.components.first.values.first)
+      whitewash(ook.to_book.components.first.contents)
     )
   end
 
@@ -197,7 +196,7 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     book = epub.to_book
     assert_equal(
       "www.gutenberg.org@files@19033@19033-h@images@cover_th.jpg",
-      book.cover
+      book.cover.src
     )
 
     # Write the book to file as a Zhook, which should convert the cover to PNG.
@@ -207,11 +206,11 @@ class Peregrin::Tests::ZhookTest < Test::Unit::TestCase
     # Load the Zhook from file, and check that it has a cover.png.
     ook2 = Peregrin::Zhook.read('test/output/alice.zhook')
     book2 = ook2.to_book
-    assert_equal("cover.png", book2.cover)
+    assert_equal("cover.png", book2.cover.src)
 
     # Validate the cover.png using ImageMagick's identify
     IO.popen("identify -", "r+") { |io|
-      io.write(book2.read_media(book2.cover))
+      io.write(book2.read_resource(book2.cover))
       io.close_write
       assert_match(/^[^\s]+ PNG /, io.read)
     }
