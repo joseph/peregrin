@@ -1,5 +1,8 @@
 class Peregrin::Book
 
+  # Unique identifier for this book
+  attr_accessor :identifier
+
   # An array of Components
   attr_accessor :components
 

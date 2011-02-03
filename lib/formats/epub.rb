@@ -120,7 +120,7 @@ class Peregrin::Epub
         spine = docs[:opf].at_xpath('//opf:spine', NAMESPACES[:opf])
         ncx_id = spine['toc'] ? spine['toc'] : 'ncx'
         item = docs[:opf].at_xpath(
-          "//opf:manifest/opf:item[@id='#{ncx_id}']",
+          "//opf:manifest/opf:item[@id=#{escape_for_xpath(ncx_id)}]",
           NAMESPACES[:opf]
         )
 
@@ -167,16 +167,20 @@ class Peregrin::Epub
 
       spine.search('//opf:itemref', NAMESPACES[:opf]).each { |iref|
         id = iref['idref']
-        item = manifest.at_xpath("//opf:item[@id='#{id}']", NAMESPACES[:opf])
-        href = item['href']
-        linear = iref['linear'] != 'no'
-        @book.add_component(
-          href,
-          zipfile.read(from_opf_root(opf_root, href)),
-          item['media-type'],
-          :id => id,
-          :linear => linear ? "yes" : "no"
+        if item = manifest.at_xpath(
+          "//opf:item[@id=#{escape_for_xpath(id)}]",
+          NAMESPACES[:opf]
         )
+          href = item['href']
+          linear = iref['linear'] != 'no'
+          @book.add_component(
+            href,
+            zipfile.read(from_opf_root(opf_root, href)),
+            item['media-type'],
+            :id => id,
+            :linear => linear ? "yes" : "no"
+          )
+        end
       }
 
       manifest.search('//opf:item', NAMESPACES[:opf]).each { |item|
@@ -528,6 +532,11 @@ class Peregrin::Epub
       else
         File.join(*args)
       end
+    end
+
+
+    def escape_for_xpath(str)
+      str.index("'") ? '"'+str+'"' : "'#{str}'"
     end
 
 

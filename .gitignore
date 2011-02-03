@@ -1,3 +1,4 @@
+.rvmrc
 test/ext/
 test/output/*
 pkg
