@@ -492,24 +492,13 @@ class Peregrin::Epub
 
     def build_xml_file(path)
       raise ArgumentError  unless block_given?
-      builder = Nokogiri::XML::Builder.new { |xml| yield(xml) }
+      builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') { |xml|
+        yield(xml)
+      }
       FileUtils.mkdir_p(File.dirname(path))
       File.open(path, 'w') { |f|
         builder.doc.write_xml_to(f, :encoding => 'UTF-8', :indent => 2)
       }
-      path.gsub(/^#{working_dir(OEBPS)}\//, '')
-    end
-
-
-    def build_html_file(path)
-      @shell_document ||= Nokogiri::HTML::Document.parse(
-        @book.components.first.contents
-      )
-      bdy = @shell_document.at_xpath('/html/body')
-      bdy.children.remove
-      doc = Nokogiri::HTML::Builder.new { |html| yield(html) }.doc
-      bdy.add_child(doc.root)
-      File.open(path, 'w') { |f| f.write(root_to_xhtml(@shell_document.root)) }
       path.gsub(/^#{working_dir(OEBPS)}\//, '')
     end
 
@@ -522,7 +511,7 @@ class Peregrin::Epub
         elem.name = "div"
       }
       root.remove_attribute('xmlns')
-      root.to_xhtml(:indent => 2)
+      root.to_xhtml(:indent => 2, :encoding => root.document.encoding)
     end
 
 

@@ -28,7 +28,7 @@ class Peregrin::Zhook
       raise MissingCoverPNG.new(path)
     end
 
-    doc = Nokogiri::HTML::Document.parse(zf.read(INDEX_PATH))
+    doc = Nokogiri::HTML::Document.parse(zf.read(INDEX_PATH), nil, 'UTF-8')
     raise IndexHTMLRootHasId.new(path)  if doc.root['id']
 
   ensure
@@ -145,7 +145,7 @@ class Peregrin::Zhook
 
     if options[:componentize]
       # Table of Contents
-      doc = Nokogiri::HTML::Builder.new { |html|
+      doc = Nokogiri::HTML::Builder.new(:encoding => 'UTF-8') { |html|
         curse = lambda { |children|
           parts = children.collect { |chp|
             chp.empty_leaf? ? nil : [chp.title, chp.src, chp.children]
@@ -178,7 +178,7 @@ class Peregrin::Zhook
       # List of Illustrations
       figures = index.css('figure[id], div.figure[id]')
       if figures.any?
-        doc = Nokogiri::HTML::Builder.new { |html|
+        doc = Nokogiri::HTML::Builder.new(:encoding => 'UTF-8') { |html|
           html.ol {
             figures.each { |fig|
               next  unless caption = fig.at_css('figcaption, .figcaption')
@@ -207,7 +207,7 @@ class Peregrin::Zhook
       end
 
       # Cover
-      doc = Nokogiri::HTML::Builder.new { |html|
+      doc = Nokogiri::HTML::Builder.new(:encoding => 'UTF-8') { |html|
         html.div(:id => "cover") {
           html.img(:src => bk.cover.src, :alt => bk.property_for("title"))
         }
@@ -362,7 +362,9 @@ class Peregrin::Zhook
 
 
     def self.extract_properties_from_index(book)
-      doc = Nokogiri::HTML::Document.parse(book.components.first.contents)
+      doc = Nokogiri::HTML::Document.parse(
+        book.components.first.contents
+      )
       doc.css('html head meta[name]').each { |meta|
         name = meta['name']
         content = meta['content']
