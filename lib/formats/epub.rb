@@ -173,9 +173,15 @@ class Peregrin::Epub
         )
           href = item['href']
           linear = iref['linear'] != 'no'
+          begin
+            content = zipfile.read(from_opf_root(opf_root, href))
+          rescue
+            require 'uri'
+            content = zipfile.read(from_opf_root(opf_root, URI.escape(href)))
+          end
           @book.add_component(
             href,
-            zipfile.read(from_opf_root(opf_root, href)),
+            content,
             item['media-type'],
             :id => id,
             :linear => linear ? "yes" : "no"
