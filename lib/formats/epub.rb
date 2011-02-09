@@ -177,7 +177,7 @@ class Peregrin::Epub
             content = zipfile.read(from_opf_root(opf_root, href))
           rescue
             require 'uri'
-            content = zipfile.read(from_opf_root(opf_root, URI.escape(href)))
+            content = zipfile.read(from_opf_root(opf_root, URI.unescape(href)))
           end
           @book.add_component(
             href,
