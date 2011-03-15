@@ -117,12 +117,12 @@ Peregrin::Ochook classes. Each format class responds to the following methods:
 Each instance of a format class responds to the following methods:
 
   * write(path)
-  * to_book(options) - returns a Peregrin:Book object
+  * to\_book(options) - returns a Peregrin:Book object
 
 Here's what a conversion routine might look like:
 
    zhook = Peregrin::Zhook.read('foo.zhook')
-   epub = Peregrin::Epub.new(zhook.to_book(:componentize => true))
+   epub = Peregrin::Epub.new(zhook.to\_book(:componentize => true))
    epub.write('foo.epub')
 
 ## Peregrin::Book

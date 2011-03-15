@@ -4,6 +4,7 @@ module Peregrin
 
   # Required libraries
   require 'fileutils'
+  require 'uri'
   require 'zipruby'
   require 'nokogiri'
   require 'mime/types'

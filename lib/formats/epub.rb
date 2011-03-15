@@ -90,6 +90,7 @@ class Peregrin::Epub
       }
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
+        media_path = URI.unescape(media_path)
         Zip::Archive.open(epub_path) { |zipfile| zipfile.read(media_path) }
       }
     end
@@ -176,7 +177,6 @@ class Peregrin::Epub
           begin
             content = zipfile.read(from_opf_root(opf_root, href))
           rescue
-            require 'uri'
             href = URI.unescape(href)
             content = zipfile.read(from_opf_root(opf_root, href))
           end
