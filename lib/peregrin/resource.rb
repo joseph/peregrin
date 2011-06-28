@@ -6,7 +6,8 @@
 #
 class Peregrin::Resource
 
-  attr_accessor :src, :media_type, :attributes
+  attr_accessor :src, :attributes
+  attr_writer :media_type
 
   def initialize(src, media_type = nil, attributes = {})
     @src = src

@@ -61,14 +61,14 @@ class Peregrin::Tests::ComponentizerTest < Test::Unit::TestCase
       whitewash(IO.read(tmp_path))
     )
   ensure
-    File.unlink(tmp_path)
+    File.unlink(tmp_path)  if File.exists?(tmp_path)
   end
 
 
   protected
 
     def process_fixture(filename)
-      fx = File.new("test/fixtures/componentizer/#{filename}")
+      fx = IO.read("test/fixtures/componentizer/#{filename}")
       doc = Nokogiri::HTML::Document.parse(fx)
       cz = Peregrin::Componentizer.new(doc)
       cz.process(doc.at_xpath('/html/body'))

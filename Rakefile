@@ -1,5 +1,8 @@
+require "rubygems"
+require "bundler"
+Bundler.setup
+
 require 'rake'
-require 'rake/gempackagetask'
 require 'rake/testtask'
 
 $LOAD_PATH << File.join(File.dirname(__FILE__), 'lib')
@@ -13,9 +16,4 @@ Rake::TestTask.new("test") { |t|
   t.pattern = 'test/**/*_test.rb'
   t.verbose = false
   t.warning = true
-}
-
-desc "Build the peregrin gem"
-Rake::GemPackageTask.new(eval(File.read('peregrin.gemspec'))) { |g|
-  g.need_zip = true
 }

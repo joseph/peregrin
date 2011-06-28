@@ -1,7 +1,5 @@
 module Peregrin
 
-  VERSION = "1.0.0"
-
   # Required libraries
   require 'fileutils'
   require 'uri'
@@ -11,6 +9,7 @@ module Peregrin
 
   # Require libs in this directory
   [
+    "peregrin/version",
     "peregrin/zip_patch",
     "peregrin/book",
     "peregrin/resource",

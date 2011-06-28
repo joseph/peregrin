@@ -2,3 +2,4 @@
 test/ext/
 test/output/*
 pkg
+Gemfile.lock
