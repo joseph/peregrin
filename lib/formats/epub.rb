@@ -210,6 +210,7 @@ class Peregrin::Epub
       curse = lambda { |point|
         chp = Peregrin::Chapter.new(
           point.at_xpath('.//ncx:text', NAMESPACES[:ncx]).content,
+          point['playOrder'],
           point.at_xpath('.//ncx:content', NAMESPACES[:ncx])['src']
         )
         point.children.each { |pt|
@@ -321,14 +322,13 @@ class Peregrin::Epub
             xml.text_(@book.property_for('title'))
           }
           xml.navMap {
-            x = 0
-            y = 0
-            play_order = {}
+            i = 0
             curse = lambda { |children|
               children.each { |chapter|
-                x = play_order[chapter.src] || (x + 1)
-                xml.navPoint(:id => "navPoint#{y+=1}", :playOrder => x) {
-                  play_order[chapter.src] ||= x
+                xml.navPoint(
+                  :id => "navPoint#{i+=1}",
+                  :playOrder => chapter.position
+                ) {
                   xml.navLabel { xml.text_(chapter.title) }
                   xml.content(:src => chapter.src)
                   curse.call(chapter.children)  if chapter.children.any?

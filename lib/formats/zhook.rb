@@ -298,8 +298,9 @@ class Peregrin::Zhook
         @outliner.process(doc.at_css('body'))
       end
 
+      i = 0
       curse = lambda { |sxn|
-        chapter = Peregrin::Chapter.new(sxn.heading_text)
+        chapter = Peregrin::Chapter.new(sxn.heading_text, i+=1)
 
         # identify any relevant child sections
         children = sxn.sections.collect { |ch|

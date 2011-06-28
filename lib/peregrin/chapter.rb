@@ -4,17 +4,18 @@
 #
 class Peregrin::Chapter
 
-  attr_accessor :title, :src, :children
+  attr_accessor :title, :src, :children, :position
 
-  def initialize(title, src = nil)
+  def initialize(title, pos, src = nil)
     @title = title.gsub(/[\r\n]/,' ')  if title
     @src = src
+    @position = pos.to_i
     @children = []
   end
 
 
-  def add_child(child_title, child_src)
-    chp = Peregrin::Chapter.new(child_title, child_src)
+  def add_child(child_title, child_pos, child_src = nil)
+    chp = Peregrin::Chapter.new(child_title, child_pos, child_src)
     children.push(chp)
     chp
   end
