@@ -111,32 +111,40 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
           IO.read("test/fixtures/epubs/strunk/OPS/#{path}")
         )
       }
+      pos = 0
       chp = book.add_chapter(
         "Chapter 1 - Introductory",
+        pos+=1,
         "main0.xml"
       )
       chp = book.add_chapter(
         "Chapter 2 - Elementary Rules of Usage",
+        pos+=1,
         "main1.xml"
       )
       chp.add_child(
         "1. Form the possessive singular of nounds with 's",
+        pos+=1,
         "main1.xml#section_98344"
       )
       chp = book.add_chapter(
         "Chapter 3 - Elementary Principles of Composition",
+        pos+=1,
         "main9.xml"
       )
       chp = book.add_chapter(
         "Chapter 4 - A Few Matters of Form",
+        pos+=1,
         "main19.xml"
       )
       chp = book.add_chapter(
         "Chapter 5 - Words and Expressions Commonly Misused",
+        pos+=1,
         "main20.xml"
       )
       chp = book.add_chapter(
         "Chapter 6 - Words Commonly Misspelled",
+        pos+=1,
         "main21.xml"
       )
       book.add_property("title", "The Elements of Style")
