@@ -153,10 +153,14 @@ class Peregrin::Epub
         end
         atts = elem.attributes.inject({}) { |acc, pair|
           key, attr = pair
-          acc[key] = attr.value  unless ["name", "content"].include?(key)
+          if !["name", "content", "property"].include?(key)
+            acc[key] = attr.value
+          elsif key == "property"
+            @book.add_property(attr.value, elem.text)
+          end
           acc
         }
-        @book.add_property(name, content, atts)
+        @book.add_property(name, content, atts) unless name.nil?
       }
     end
 

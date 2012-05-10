@@ -89,6 +89,15 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     assert_equal("cover.png", epub.to_book.cover.src)
   end
 
+  def test_extracting_epub3_fixed_layout_properties
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
+    book = epub.to_book
+    assert_equal("2012-05-09T08:58:00Z", book.property_for('dcterms:modified'))
+    assert_equal("pre-paginated", book.property_for('rendition:layout'))
+    assert_equal("auto", book.property_for('rendition:orientation'))
+    assert_equal("both", book.property_for('rendition:spread'))
+  end
+
 
   def test_read_epub_to_write_epub
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
