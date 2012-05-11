@@ -98,6 +98,14 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     assert_equal("both", book.property_for('rendition:spread'))
   end
 
+  def test_extracting_version
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
+    assert_equal(epub.to_book.version, '3.0')
+
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(epub.to_book.version, '2.0')
+  end
+
 
   def test_read_epub_to_write_epub
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")

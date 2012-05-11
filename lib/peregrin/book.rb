@@ -19,6 +19,10 @@ class Peregrin::Book
   # A Resource that is used for the book cover.
   attr_accessor :cover
 
+  # The current version of document specifications
+  # Only used for Epub for now
+  attr_accessor :version
+
   # A proc that copies a resource to the given destination.
   attr_writer :read_resource_proc
 

@@ -116,7 +116,10 @@ class Peregrin::Epub
         raise FailureLoadingOPF
       end
 
-      # The NCX file.
+      # Extract Epub version
+      @book.version = docs[:opf].at_xpath('//opf:package', NAMESPACES[:opf])['version']
+
+      # The NCX file
       begin
         spine = docs[:opf].at_xpath('//opf:spine', NAMESPACES[:opf])
         ncx_id = spine['toc'] ? spine['toc'] : 'ncx'
