@@ -147,7 +147,7 @@ class Peregrin::Epub
             docs[:opf_root],
             docs[:opf].at_xpath("//opf:manifest/opf:item[contains(concat(' ', normalize-space(@properties), ' '), ' nav ')]", NAMESPACES[:opf])['href']
           )
-          nav_content = zipfile.read(docs[:nav_path])
+          nav_content = zipfile.content(docs[:nav_path])
           docs[:nav] = Nokogiri::XML::Document.parse(nav_content)
         rescue => e
           raise FailureLoadingNAV

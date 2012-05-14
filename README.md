@@ -150,4 +150,4 @@ deeper meaning.
 
 ## History
 
-* 1.1.2 - Basic EPUB3 and EPUB fixed-layout read support (thanks @klacointe!)
+* 1.1.4 - Basic EPUB3 and EPUB fixed-layout read support (thanks @klacointe!)
