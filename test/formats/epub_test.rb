@@ -89,6 +89,91 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     assert_equal("cover.png", epub.to_book.cover.src)
   end
 
+  def test_extracting_epub3_fixed_layout_properties
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
+    book = epub.to_book
+    assert_equal("2012-05-09T08:58:00Z", book.property_for('dcterms:modified'))
+    assert_equal("pre-paginated", book.property_for('rendition:layout'))
+    assert_equal("auto", book.property_for('rendition:orientation'))
+    assert_equal("both", book.property_for('rendition:spread'))
+  end
+
+  def test_extracting_version
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
+    assert_equal(3.0, epub.to_book.version)
+
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(2.0, epub.to_book.version)
+  end
+
+  def test_extracting_chapters_from_ocx
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(9, epub.to_book.chapters.count)
+    assert_equal("Title", epub.to_book.chapters.first.title)
+    assert_equal("title.xml", epub.to_book.chapters.first.src)
+    assert_equal(1, epub.to_book.chapters.first.position)
+    assert_equal("Recommendations", epub.to_book.chapters.last.title)
+    assert_equal("similar.xml", epub.to_book.chapters.last.src)
+    assert_equal(27, epub.to_book.chapters.last.position)
+  end
+
+  def test_extracting_chapters_from_nav
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
+    assert_equal(3, epub.to_book.chapters.count)
+    assert_equal("Images and Text", epub.to_book.chapters.first.title)
+    assert_equal("page01.xhtml", epub.to_book.chapters.first.src)
+    assert_equal(1, epub.to_book.chapters.first.position)
+    assert_equal("Dragons", epub.to_book.chapters.last.title)
+    assert_equal("page04.xhtml", epub.to_book.chapters.last.src)
+    assert_equal(3, epub.to_book.chapters.last.position)
+  end
+
+  def test_extracting_nested_chapters_from_nav
+    epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_nested_nav.epub")
+    assert_equal(11, epub.to_book.chapters.count)
+    assert_equal(
+      ["EPUB 3.0 Specification",
+       "EPUB 3 Specifications - Table of Contents",
+       "Terminology",
+       "EPUB 3 Overview",
+       "EPUB Publications 3.0",
+       "EPUB Content Documents 3.0",
+       "EPUB Media Overlays 3.0",
+       "Acknowledgements and Contributors",
+       "References",
+       "EPUB Open Container Format (OCF) 3.0",
+       "EPUB 3 Changes from EPUB 2.0.1"],
+      epub.to_book.chapters.map(&:title)
+    )
+    assert_equal(
+      [1, 2, 3, 4, 30, 85, 184, 230, 231, 232, 265],
+      epub.to_book.chapters.map(&:position)
+    )
+    assert_equal(
+      ["1. Introduction",
+       "2. Features",
+       "3. Global Language Support",
+       "4. Accessibility"],
+      epub.to_book.chapters[3].children.map(&:title)
+    )
+    assert_equal(
+      [5, 8, 22, 29],
+      epub.to_book.chapters[3].children.map(&:position)
+    )
+    assert_equal(
+      ["3.1. Metadata",
+       "3.2. Content Documents",
+       "3.3. CSS",
+       "3.4. Fonts",
+       "3.5. Text-to-speech",
+       "3.6. Container"],
+      epub.to_book.chapters[3].children[2].children.map(&:title)
+    )
+    assert_equal(
+      [23, 24, 25, 26, 27, 28],
+      epub.to_book.chapters[3].children[2].children.map(&:position)
+    )
+  end
 
   def test_read_epub_to_write_epub
     epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
