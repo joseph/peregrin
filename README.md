@@ -146,3 +146,8 @@ it's being kept as simple as possible.
 
 All this rhyming on "ook" put me in mind of the Took family. There is no
 deeper meaning.
+
+
+## History
+
+* 1.1.2 - Basic EPUB3 and EPUB fixed-layout read support (thanks @klacointe!)

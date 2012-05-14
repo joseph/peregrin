@@ -1,4 +1,5 @@
 .rvmrc
+.rbenv-version
 test/ext/
 test/output/*
 pkg
