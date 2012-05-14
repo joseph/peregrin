@@ -92,7 +92,7 @@ class Peregrin::Epub
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
         media_path = URI.unescape(media_path)
-        Zip::Archive.open(epub_path) { |zipfile| zipfile.read(media_path) }
+        Zip::Archive.open(epub_path) { |zipfile| zipfile.content(media_path) }
       }
     end
 
@@ -100,7 +100,8 @@ class Peregrin::Epub
     def load_config_documents(zipfile)
       # The OCF file.
       begin
-        docs = { :ocf => Nokogiri::XML::Document.parse(zipfile.read(OCF_PATH)) }
+        ocf_content = zipfile.content(OCF_PATH)
+        docs = { :ocf => Nokogiri::XML::Document.parse(ocf_content) }
       rescue
         raise FailureLoadingOCF
       end
@@ -112,7 +113,8 @@ class Peregrin::Epub
           NAMESPACES[:ocf]
         )['full-path']
         docs[:opf_root] = File.dirname(docs[:opf_path])
-        docs[:opf] = Nokogiri::XML::Document.parse(zipfile.read(docs[:opf_path]))
+        opf_content = zipfile.content(docs[:opf_path])
+        docs[:opf] = Nokogiri::XML::Document.parse(opf_content)
       rescue
         raise FailureLoadingOPF
       end
@@ -131,7 +133,7 @@ class Peregrin::Epub
         )
 
         docs[:ncx_path] = from_opf_root(docs[:opf_root], item['href'])
-        ncx_content = zipfile.read(docs[:ncx_path])
+        ncx_content = zipfile.content(docs[:ncx_path])
         docs[:ncx] = Nokogiri::XML::Document.parse(ncx_content)
       rescue => e
         # Only raise an exeption for Ebook with version lower than 3.0
@@ -199,10 +201,10 @@ class Peregrin::Epub
           href = item['href']
           linear = iref['linear'] != 'no'
           begin
-            content = zipfile.read(from_opf_root(opf_root, href))
+            content = zipfile.content(from_opf_root(opf_root, href))
           rescue
             href = URI.unescape(href)
-            content = zipfile.read(from_opf_root(opf_root, href))
+            content = zipfile.content(from_opf_root(opf_root, href))
           end
           @book.add_component(
             href,
@@ -310,7 +312,7 @@ class Peregrin::Epub
       else
         path = from_opf_root(docs[:opf_root], res.src)
         begin
-          doc = Nokogiri::XML::Document.parse(zipfile.read(path))
+          doc = Nokogiri::XML::Document.parse(zipfile.content(path))
           src = nil
           if img = doc.at_css('img')
             src = img['src']

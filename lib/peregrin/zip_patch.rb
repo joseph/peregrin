@@ -1,8 +1,9 @@
 class Zip::Archive
 
-  def read(path)
+  def content(path)
     fopen(path) { |f| f.read }
   end
+
 
   def find(path)
     detect { |f| f.name == path }

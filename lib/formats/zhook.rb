@@ -28,7 +28,7 @@ class Peregrin::Zhook
       raise MissingCoverPNG.new(path)
     end
 
-    doc = Nokogiri::HTML::Document.parse(zf.read(INDEX_PATH), nil, 'UTF-8')
+    doc = Nokogiri::HTML::Document.parse(zf.content(INDEX_PATH), nil, 'UTF-8')
     raise IndexHTMLRootHasId.new(path)  if doc.root['id']
 
   ensure
@@ -42,16 +42,14 @@ class Peregrin::Zhook
     validate(path)
     book = Peregrin::Book.new
     Zip::Archive.open(path) { |zf|
-      book.add_component(INDEX_PATH, zf.read(INDEX_PATH))
+      book.add_component(INDEX_PATH, zf.content(INDEX_PATH))
       zf.each { |entry|
         ze = entry.name
         book.add_resource(ze)  unless ze == INDEX_PATH || entry.directory?
       }
     }
     book.read_resource_proc = lambda { |resource|
-      Zip::Archive.open(path) { |zipfile|
-        zipfile.read(resource.src)
-      }
+      Zip::Archive.open(path) { |zipfile| zipfile.content(resource.src) }
     }
 
     extract_properties_from_index(book)
