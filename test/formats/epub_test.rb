@@ -184,6 +184,13 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     }
   end
 
+  def test_extracting_direction
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(nil, epub.to_book.direction)
+    epub = Peregrin::Epub.read("test/fixtures/epubs/haruko-html-jpeg-20120524.epub")
+    assert_equal("rtl", epub.to_book.direction)
+  end
+
 
   protected
 

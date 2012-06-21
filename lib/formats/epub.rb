@@ -88,6 +88,7 @@ class Peregrin::Epub
         extract_components(zipfile, docs[:opf], docs[:opf_root])
         extract_chapters(zipfile, {:ncx => docs[:ncx], :nav => docs[:nav]})
         extract_cover(zipfile, docs)
+        extract_direction(docs[:opf])
       }
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
@@ -184,6 +185,12 @@ class Peregrin::Epub
         }
         @book.add_property(name, content, atts) unless name.nil?
       }
+    end
+
+
+    def extract_direction(opf_doc)
+      spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
+      @book.direction = spine['page-progression-direction'] if spine
     end
 
 
