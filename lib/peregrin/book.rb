@@ -23,6 +23,11 @@ class Peregrin::Book
   # Only used for Epub for now
   attr_accessor :version
 
+  # The page progression direction
+  # Can be "ltr" (left to right), "rlt" (right to left) or nil (omited)
+  # Only used for Epub for now
+  attr_accessor :direction
+
   # A proc that copies a resource to the given destination.
   attr_writer :read_resource_proc
 

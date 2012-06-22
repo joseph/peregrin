@@ -70,7 +70,7 @@ class Peregrin::Epub
 
 
   def to_book(options = {})
-    bk = @book.deep_clone
+    @book.deep_clone
   end
 
 
@@ -88,10 +88,12 @@ class Peregrin::Epub
         extract_components(zipfile, docs[:opf], docs[:opf_root])
         extract_chapters(zipfile, {:ncx => docs[:ncx], :nav => docs[:nav]})
         extract_cover(zipfile, docs)
+        extract_direction(docs[:opf])
       }
+      uri_parser = URI.const_defined?(:Parser) ? URI::Parser.new : URI
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
-        media_path = URI.unescape(media_path)
+        media_path = uri_parser.unescape(media_path)
         Zip::Archive.open(epub_path) { |zipfile| zipfile.content(media_path) }
       }
     end
@@ -187,8 +189,13 @@ class Peregrin::Epub
     end
 
 
+    def extract_direction(opf_doc)
+      spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
+      @book.direction = spine['page-progression-direction'] if spine
+    end
+
+
     def extract_components(zipfile, opf_doc, opf_root)
-      ids = {}
       manifest = opf_doc.at_xpath('//opf:manifest', NAMESPACES[:opf])
       spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
 
@@ -206,13 +213,15 @@ class Peregrin::Epub
             href = URI.unescape(href)
             content = zipfile.content(from_opf_root(opf_root, href))
           end
-          @book.add_component(
-            href,
-            content,
-            item['media-type'],
-            :id => id,
-            :linear => linear ? "yes" : "no"
-          )
+          atts = { :id => id, :linear => linear ? "yes" : "no" }
+          iref['properties'].split(/\s+/).each do |prop|
+            if prop =~ /^rendition:(layout|orientation|spread)-(.+)$/
+              atts["rendition:#{$1}"] = $2
+            else
+              atts[prop] = true
+            end
+          end if iref['properties']
+          @book.add_component(href, content, item['media-type'], atts)
         end
       }
 

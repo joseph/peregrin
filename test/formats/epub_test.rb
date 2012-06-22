@@ -98,6 +98,18 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     assert_equal("both", book.property_for('rendition:spread'))
   end
 
+  def test_extracting_epub3_fixed_layout_itemref
+    epub = Peregrin::Epub.read("test/fixtures/epubs/haruko-html-jpeg-20120524.epub")
+    book = epub.to_book
+    assert_equal(true, book.components[0].attributes["page-spread-left"])
+    assert_equal(nil, book.components[0].attributes["page-spread-right"])
+    assert_equal(nil, book.components[1].attributes["page-spread-left"])
+    assert_equal(true, book.components[1].attributes["page-spread-right"])
+    assert_equal(true, book.components.last.attributes["page-spread-left"])
+    assert_equal(nil, book.components.last.attributes["page-spread-right"])
+    assert_equal("reflowable", book.components.last.attributes["rendition:layout"])
+  end
+
   def test_extracting_version
     epub = Peregrin::Epub.read("test/fixtures/epubs/epub3_fixed_layout.epub")
     assert_equal(3.0, epub.to_book.version)
@@ -182,6 +194,13 @@ class Peregrin::Tests::EpubTest < Test::Unit::TestCase
     assert_nothing_raised {
       Peregrin::Epub.validate("test/output/strunk_test2.epub")
     }
+  end
+
+  def test_extracting_direction
+    epub = Peregrin::Epub.read("test/fixtures/epubs/strunk.epub")
+    assert_equal(nil, epub.to_book.direction)
+    epub = Peregrin::Epub.read("test/fixtures/epubs/haruko-html-jpeg-20120524.epub")
+    assert_equal("rtl", epub.to_book.direction)
   end
 
 

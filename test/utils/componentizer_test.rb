@@ -37,7 +37,10 @@ class Peregrin::Tests::ComponentizerTest < Test::Unit::TestCase
     assert_equal(
       whitewash(
         "<!DOCTYPE html>" +
-        "<html><head><title>Components test 1</title></head><body>" +
+        "<html><head>" + 
+        "<meta http-equiv=\"Content-Type\" content=\"text/html;charset=UTF-8\">" +
+        "<title>Components test 1</title>" +
+        "</head><body>" +
         "<article><h2>B</h2></article>" +
         "</body></html>"
       ),
