@@ -90,9 +90,10 @@ class Peregrin::Epub
         extract_cover(zipfile, docs)
         extract_direction(docs[:opf])
       }
+      uri_parser = URI.const_defined?(:Parser) ? URI::Parser.new : URI
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
-        media_path = URI.unescape(media_path)
+        media_path = uri_parser.unescape(media_path)
         Zip::Archive.open(epub_path) { |zipfile| zipfile.content(media_path) }
       }
     end
