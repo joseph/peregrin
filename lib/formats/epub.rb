@@ -213,13 +213,15 @@ class Peregrin::Epub
             href = URI.unescape(href)
             content = zipfile.content(from_opf_root(opf_root, href))
           end
-          @book.add_component(
-            href,
-            content,
-            item['media-type'],
-            :id => id,
-            :linear => linear ? "yes" : "no"
-          )
+          atts = { :id => id, :linear => linear ? "yes" : "no" }
+          iref['properties'].split(/\s+/).each do |prop|
+            if prop =~ /^rendition:(layout|orientation|spread)-(.+)$/
+              atts["rendition:#{$1}"] = $2
+            else
+              atts[prop] = true
+            end
+          end if iref['properties']
+          @book.add_component(href, content, item['media-type'], atts)
         end
       }
 
