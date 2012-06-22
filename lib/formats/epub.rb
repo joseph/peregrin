@@ -70,7 +70,7 @@ class Peregrin::Epub
 
 
   def to_book(options = {})
-    bk = @book.deep_clone
+    @book.deep_clone
   end
 
 
@@ -196,7 +196,6 @@ class Peregrin::Epub
 
 
     def extract_components(zipfile, opf_doc, opf_root)
-      ids = {}
       manifest = opf_doc.at_xpath('//opf:manifest', NAMESPACES[:opf])
       spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
 

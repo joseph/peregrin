@@ -118,8 +118,6 @@ class Peregrin::Zhook
       }
 
       # Add rel links and convert to html string
-      first_path = bk.components.first.src
-      last_path = bk.components.last.src
       boilerplate_rel_links <<
         '<link rel="first" href="'+bk.components.first.src+'" />' +
         '<link rel="last" href="'+bk.components.last.src+'" />'
