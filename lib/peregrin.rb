@@ -14,6 +14,7 @@ module Peregrin
     "peregrin/book",
     "peregrin/resource",
     "peregrin/component",
+    "peregrin/blueprint",
     "peregrin/chapter",
     "peregrin/property",
     "peregrin/componentizer",

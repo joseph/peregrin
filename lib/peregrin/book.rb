@@ -19,6 +19,9 @@ class Peregrin::Book
   # An array of Resources.
   attr_accessor :resources
 
+  # An array of Blueprints (ie, metadata files like the OPF or NCX).
+  attr_accessor :blueprints
+
   # A Resource that is used for the book cover.
   attr_accessor :cover
 
@@ -32,11 +35,12 @@ class Peregrin::Book
     @properties = []
     @format_properties = []
     @resources = []
+    @blueprints = []
   end
 
 
   def all_files
-    @components + @resources
+    @components + @resources + @blueprints
   end
 
 
@@ -47,6 +51,16 @@ class Peregrin::Book
 
   def add_resource(*args)
     @resources.push(Peregrin::Resource.new(*args)).last
+  end
+
+
+  def add_blueprint(*args)
+    @blueprints.push(Peregrin::Blueprint.new(*args)).last
+  end
+
+
+  def blueprint_for(rel)
+    @blueprints.detect { |bp| bp.rel == rel }
   end
 
 
