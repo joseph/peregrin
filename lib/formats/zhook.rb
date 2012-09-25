@@ -359,6 +359,7 @@ class Peregrin::Zhook
 
 
     def self.extract_properties_from_index(book)
+      book.add_format_property('source', 'Zhook')
       doc = Nokogiri::HTML::Document.parse(
         book.components.first.contents
       )

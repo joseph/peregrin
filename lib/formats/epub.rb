@@ -88,12 +88,10 @@ class Peregrin::Epub
         extract_components(zipfile, docs[:opf], docs[:opf_root])
         extract_chapters(zipfile, {:ncx => docs[:ncx], :nav => docs[:nav]})
         extract_cover(zipfile, docs)
-        extract_direction(docs[:opf])
       }
-      uri_parser = URI.const_defined?(:Parser) ? URI::Parser.new : URI
       @book.read_resource_proc = lambda { |resource|
         media_path = from_opf_root(docs[:opf_root], resource.src)
-        media_path = uri_parser.unescape(media_path)
+        media_path = uri_unescape(media_path)
         Zip::Archive.open(epub_path) { |zipfile| zipfile.content(media_path) }
       }
     end
@@ -121,11 +119,13 @@ class Peregrin::Epub
         raise FailureLoadingOPF
       end
 
-      # Extract Epub version
-      @book.version = docs[:opf].at_xpath('//opf:package', NAMESPACES[:opf])['version'].to_f
+      # EPUB version
+      pkg_elem = docs[:opf].at_xpath('//opf:package', NAMESPACES[:opf])
+      @epub_version = pkg_elem['version']
 
       # The NCX file.
-      # Must be present only with Ebook < 3.0 but can be use for forward compatibility
+      # Must be present only with Ebook < 3.0 but can be used
+      # for forward compatibility
       begin
         spine = docs[:opf].at_xpath('//opf:spine', NAMESPACES[:opf])
         ncx_id = spine['toc'] ? spine['toc'] : 'ncx'
@@ -139,16 +139,18 @@ class Peregrin::Epub
         docs[:ncx] = Nokogiri::XML::Document.parse(ncx_content)
       rescue => e
         # Only raise an exeption for Ebook with version lower than 3.0
-        raise FailureLoadingNCX if @book.version < 3
+        raise FailureLoadingNCX if epub_version < 3
       end
 
       # The NAV file. (Epub3 only)
-      if @book.version >= 3
+      if epub_version >= 3
         begin
-          docs[:nav_path] = from_opf_root(
-            docs[:opf_root],
-            docs[:opf].at_xpath("//opf:manifest/opf:item[contains(concat(' ', normalize-space(@properties), ' '), ' nav ')]", NAMESPACES[:opf])['href']
-          )
+          nav_xpath = [
+            "//opf:manifest/opf:item[contains",
+            "(concat(' ', normalize-space(@properties), ' '), ' nav ')]"
+          ].join('')
+          nav_href = docs[:opf].at_xpath(nav_xpath, NAMESPACES[:opf])['href']
+          docs[:nav_path] = from_opf_root(docs[:opf_root], nav_href)
           nav_content = zipfile.content(docs[:nav_path])
           docs[:nav] = Nokogiri::XML::Document.parse(nav_content)
         rescue => e
@@ -186,12 +188,16 @@ class Peregrin::Epub
         }
         @book.add_property(name, content, atts) unless name.nil?
       }
-    end
 
+      # Assign EPUB version
+      @book.add_format_property('source', 'EPUB')
+      @book.add_format_property('version', @epub_version)  if @epub_version
 
-    def extract_direction(opf_doc)
-      spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
-      @book.direction = spine['page-progression-direction'] if spine
+      # Extract page-turning direction
+      if spine = opf_doc.at_xpath('//opf:spine', NAMESPACES[:opf])
+        dir = spine['page-progression-direction']
+        @book.add_format_property('page-progression-direction', dir)  if dir
+      end
     end
 
 
@@ -210,7 +216,7 @@ class Peregrin::Epub
           begin
             content = zipfile.content(from_opf_root(opf_root, href))
           rescue
-            href = URI.unescape(href)
+            href = uri_unescape(href)
             content = zipfile.content(from_opf_root(opf_root, href))
           end
           atts = { :id => id, :linear => linear ? "yes" : "no" }
@@ -241,7 +247,7 @@ class Peregrin::Epub
     end
 
     def extract_chapters(zipfile, docs)
-      if @book.version >= 3 && !docs[:nav].nil?
+      if epub_version >= 3 && !docs[:nav].nil?
         extract_nav_chapters(zipfile, docs[:nav])
       else
         extract_ncx_chapters(zipfile, docs[:ncx])
@@ -602,6 +608,17 @@ class Peregrin::Epub
 
     def escape_for_xpath(str)
       str.index("'") ? '"'+str+'"' : "'#{str}'"
+    end
+
+
+    def uri_unescape(str)
+      @uri_parser ||= URI.const_defined?(:Parser) ? URI::Parser.new : URI
+      @uri_parser.unescape(str)
+    end
+
+
+    def epub_version
+      @epub_version ? @epub_version.to_f : 0
     end
 
 

@@ -10,23 +10,17 @@ class Peregrin::Book
   # children arrays.
   attr_accessor :chapters
 
-  # An array of Properties.
+  # An array of Properties containg the ebook-supplied metadata.
   attr_accessor :properties
+
+  # An array of Properties relating to the format of the ebook.
+  attr_accessor :format_properties
 
   # An array of Resources.
   attr_accessor :resources
 
   # A Resource that is used for the book cover.
   attr_accessor :cover
-
-  # The current version of document specifications
-  # Only used for Epub for now
-  attr_accessor :version
-
-  # The page progression direction
-  # Can be "ltr" (left to right), "rlt" (right to left) or nil (omited)
-  # Only used for Epub for now
-  attr_accessor :direction
 
   # A proc that copies a resource to the given destination.
   attr_writer :read_resource_proc
@@ -36,6 +30,7 @@ class Peregrin::Book
     @components = []
     @chapters = []
     @properties = []
+    @format_properties = []
     @resources = []
   end
 
@@ -69,6 +64,36 @@ class Peregrin::Book
     key = key.to_s
     prop = @properties.detect { |p| p.key == key }
     prop ? prop.value : nil
+  end
+
+
+  def add_format_property(*args)
+    @format_properties.push(Peregrin::Property.new(*args)).last
+  end
+
+
+  def format_property_for(key)
+    key = key.to_s
+    prop = @format_properties.detect { |p| p.key == key }
+    prop ? prop.value : nil
+  end
+
+
+  # The current version of document specifications.
+  # Only used for EPUB for now.
+  #
+  def version
+    v = format_property_for('version')
+    v ? v.to_f : nil
+  end
+
+
+  # The page progression direction.
+  # Can be "ltr" (left to right), "rtl" (right to left) or nil (omitted).
+  # Only used for EPUB for now.
+  #
+  def direction
+    format_property_for('page-progression-direction')
   end
 
 
