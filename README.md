@@ -150,4 +150,9 @@ deeper meaning.
 
 ## History
 
-* 1.1.4 - Basic EPUB3 and EPUB fixed-layout read support (thanks @klacointe!)
+* 1.2.0
+  - Metadata files like OPF, OCX now first-class citizens called 'blueprints'
+  - Page progression direction from EPUB3 (@nono)
+  - Fixed-layout attributes for components (@nono)
+* 1.1.4
+  - Basic EPUB3 and EPUB fixed-layout read support (@klacointe)
