@@ -144,7 +144,7 @@ class Peregrin::Epub
           nav_src = from_opf_root(nav_href)
           nav_content = zipfile.content(nav_src)
           nav = @book.add_blueprint(:nav, nav_src, nav_content)
-        rescue => e
+        rescue
           raise FailureLoadingNAV
         end
       end
@@ -154,7 +154,7 @@ class Peregrin::Epub
       inf_rels.each { |rel|
         src = "META-INF/#{rel}.xml"
         next  unless zipfile.find(src)
-        bp = @book.add_blueprint(rel.to_sym, src, zipfile.content(src))
+        @book.add_blueprint(rel.to_sym, src, zipfile.content(src))
       }
     end
 
@@ -616,8 +616,7 @@ class Peregrin::Epub
 
 
     def uri_unescape(str)
-      @uri_parser ||= URI.const_defined?(:Parser) ? URI::Parser.new : URI
-      @uri_parser.unescape(str)
+      CGI.unescape(str)
     end
 
 
