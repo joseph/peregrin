@@ -131,5 +131,34 @@ class Peregrin::Book
     clone.read_resource_proc = @read_resource_proc = tmp
     clone
   end
+  
+  
+  def to_json
+    hash = {}
+    hash['cover'] = @cover.src
+    hash['components'] = []
+    @components.each { |component| hash['components'].push(component.src) }
+    hash['resources'] = []
+    @resources.each { |resource| hash['resources'].push(resource.src) }
+    hash['chapters'] = []
+    @chapters.each { |chapter| hash['chapters'].push(json_chapter(chapter)) }
+    hash['properties'] = {}
+    @properties.each { |property| hash['properties'][property.key] = property.value }
+    hash.to_json
+  end
+  
+  
+  def json_chapter(chp)
+    hash = {}
+    hash['title'] = chp.title
+    hash['src'] = chp.src
+    if !chp.children.empty?
+      hash['children'] = []
+      chp.children.each { |ch|
+        hash['children'].push(json_chapter(ch))
+      }
+    end
+    return hash
+  end
 
 end

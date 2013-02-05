@@ -6,6 +6,7 @@ module Peregrin
   require 'zipruby'
   require 'nokogiri'
   require 'mime/types'
+  require 'json'
 
   # Require libs in this directory
   [
