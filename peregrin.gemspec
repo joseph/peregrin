@@ -27,6 +27,7 @@ spec = Gem::Specification.new do |s|
   s.add_dependency('nokogiri')
   s.add_dependency('zipruby')
   s.add_dependency('mime-types')
+  s.add_dependency('json')
 
   s.add_development_dependency("rake")
 end
