@@ -89,7 +89,7 @@ module Peregrin
       ook = klass.read(path)
       book = ook.to_book
       puts "[#{klass::FORMAT}]"
-      puts "\nCover\n  #{book.cover.src}"
+      puts "\nCover\n  #{  book.cover ? book.cover.src : 'none'}"
       puts "\nComponents [#{book.components.size}]"
       book.components.each { |cmpt| puts "  #{cmpt.src}" }
       puts "\nResources [#{book.resources.size}]"
